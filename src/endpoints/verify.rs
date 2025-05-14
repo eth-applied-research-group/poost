@@ -8,14 +8,14 @@ use tracing::instrument;
 
 use crate::common::{AppState, ZkVMType};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct VerifyRequest {
     pub proof: String,
     #[serde(deserialize_with = "crate::endpoints::register::deserialize_zkvm_type")]
     pub zkvm: ZkVMType,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct VerifyResponse {
     pub program_id: String,
     pub verified: bool,
