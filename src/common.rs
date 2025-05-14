@@ -48,3 +48,17 @@ pub struct AppState {
     pub programs_dir: PathBuf,
     pub programs: Arc<RwLock<HashMap<String, Program>>>,
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_zkvm_type_parsing() {
+        assert_eq!("risc0".parse::<ZkVMType>().unwrap(), ZkVMType::Risc0);
+        assert_eq!("sp1".parse::<ZkVMType>().unwrap(), ZkVMType::SP1);
+        assert!("invalid".parse::<ZkVMType>().is_err());
+        assert!("".parse::<ZkVMType>().is_err());
+    }
+}
