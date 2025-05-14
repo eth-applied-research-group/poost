@@ -71,3 +71,38 @@ pub async fn register_program(
         status: format!("compiled with {}", req.zkvm),
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        collections::HashMap,
+        env::temp_dir,
+        sync::{Arc, RwLock},
+    };
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_register_program() {
+        let state = AppState {
+            programs_dir: temp_dir(),
+            programs: Arc::new(RwLock::new(HashMap::new())),
+        };
+
+        let mut base64_encoded_string = String::new();
+        BASE64.encode_string(b"hello world~", &mut base64_encoded_string);
+
+        let req = RegisterProgramRequest {
+            program_name: "test_program".to_string(),
+            zkvm: ZkVMType::Risc0,
+            source_code: base64_encoded_string,
+        };
+
+        let result = register_program(State(state), Json(req)).await;
+        assert!(result.is_ok(),);
+
+        let response = result.unwrap().0;
+        assert!(!response.program_id.is_empty());
+        assert_eq!(response.status, "compiled with risc0");
+    }
+}
