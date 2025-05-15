@@ -41,11 +41,7 @@ pub async fn prove_program(
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::HashMap,
-        env::temp_dir,
-        sync::Arc,
-    };
+    use std::{collections::HashMap, env::temp_dir, sync::Arc};
     use tokio::sync::RwLock;
 
     use axum::{

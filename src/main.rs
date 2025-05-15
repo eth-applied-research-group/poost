@@ -7,16 +7,10 @@ use axum::{
 };
 use common::AppState;
 use endpoints::{execute_program, get_server_info, prove_program, register_program, verify_proof};
-use std::{
-    collections::HashMap,
-    fs,
-    net::SocketAddr,
-    path::PathBuf,
-    sync::Arc,
-};
-use tokio::sync::RwLock;
+use std::{collections::HashMap, fs, net::SocketAddr, path::PathBuf, sync::Arc};
 use tokio::net::TcpListener;
 use tokio::signal;
+use tokio::sync::RwLock;
 use tower_http::trace::TraceLayer;
 
 fn app(state: AppState) -> Router {
