@@ -154,7 +154,7 @@ mod tests {
         let result = prove_program(State(state), Json(request)).await;
 
         assert!(result.is_err());
-        let (status, message) = result.unwrap_err();
+        let (status, _message) = result.unwrap_err();
         assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
     }
 
