@@ -12,8 +12,9 @@ use std::{
     fs,
     net::SocketAddr,
     path::PathBuf,
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
+use tokio::sync::RwLock;
 use tokio::net::TcpListener;
 use tokio::signal;
 use tower_http::trace::TraceLayer;
