@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: ["master"]
   pull_request:
     branches: ["master"]
 
@@ -15,6 +15,12 @@ jobs:
         toolchain: [stable]
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install SP1 toolchain (zkVM)
+        run: |
+          curl -L https://sp1up.succinct.xyz | bash
+          ~/.sp1/bin/sp1up
+          echo "$HOME/.sp1/bin" >> $GITHUB_PATH
 
       - uses: dtolnay/rust-toolchain@v1
         with:
