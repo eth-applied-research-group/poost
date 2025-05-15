@@ -28,7 +28,7 @@ pub async fn verify_proof(
     State(state): State<AppState>,
     Json(req): Json<VerifyRequest>,
 ) -> Result<Json<VerifyResponse>, (StatusCode, String)> {
-    if let Some(program) = state.programs.read().unwrap().get(&program_id) {
+    if let Some(program) = state.programs.read().await.get(&program_id) {
         // TODO: In a real implementation, verify the proof using the appropriate ZKVM verifier
         // based on req.zkvm
         Ok(Json(VerifyResponse {
