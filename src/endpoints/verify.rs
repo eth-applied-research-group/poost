@@ -74,11 +74,14 @@ mod tests {
     use crate::common::Program;
     use crate::endpoints::prove::ProveRequest;
     use crate::endpoints::prove::prove_program;
+    use ere_sp1::RV32_IM_SUCCINCT_ZKVM_ELF;
     use std::collections::HashMap;
     use std::fs;
+    use std::path::PathBuf;
     use std::sync::Arc;
     use tempfile::TempDir;
     use tokio::sync::RwLock;
+    use zkvm_interface::Compiler;
     use zkvm_interface::Input;
 
     // Helper function to create a test AppState
@@ -100,9 +103,9 @@ mod tests {
         let (state, _temp_dir) = create_test_state();
         let program_id = "test_program".to_string();
 
-        // Read and encode the example program's ELF
-        let elf_path = "tests/sp1/execute/basic/target/elf-compilation/riscv32im-succinct-zkvm-elf/release/ere-test-sp1-guest";
-        let elf_bytes = fs::read(elf_path).expect("Failed to read ELF file");
+        let program_dir = PathBuf::from("tests/sp1/execute/basic");
+        let elf_bytes = RV32_IM_SUCCINCT_ZKVM_ELF::compile(&program_dir).unwrap();
+
         let elf_base64 = BASE64.encode(&elf_bytes);
 
         // Generate input data
@@ -149,9 +152,9 @@ mod tests {
         let (state, _temp_dir) = create_test_state();
         let program_id = "test_program".to_string();
 
-        // Read and encode the example program's ELF
-        let elf_path = "tests/sp1/execute/basic/target/elf-compilation/riscv32im-succinct-zkvm-elf/release/ere-test-sp1-guest";
-        let elf_bytes = fs::read(elf_path).expect("Failed to read ELF file");
+        let program_dir = PathBuf::from("tests/sp1/execute/basic");
+        let elf_bytes = RV32_IM_SUCCINCT_ZKVM_ELF::compile(&program_dir).unwrap();
+
         let elf_base64 = BASE64.encode(&elf_bytes);
 
         {
