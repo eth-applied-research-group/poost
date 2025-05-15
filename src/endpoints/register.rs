@@ -12,7 +12,8 @@ pub struct RegisterProgramRequest {
     pub program_name: String,
     #[serde(deserialize_with = "deserialize_zkvm_type")]
     pub zkvm: ZkVMType,
-    pub source_code: String, // Base64-encoded tar/zip of the program source
+    pub elf_file: String,         // Base64-encoded ELF file
+    pub compiler_version: String, // Version of the compiler used
 }
 
 #[derive(Debug, Serialize)]
@@ -46,63 +47,130 @@ pub async fn register_program(
         )
     })?;
 
-    // Decode and extract the source code
-    let _source_bytes = BASE64.decode(&req.source_code).map_err(|e| {
+    // Decode the ELF file
+    let elf_bytes = BASE64.decode(&req.elf_file).map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
             format!("Invalid base64 encoding: {e}"),
         )
     })?;
 
-    // TODO: Extract the source code archive (tar/zip) into program_dir
-    // This will depend on the format you choose (tar.gz, zip, etc.)
+    // Write the ELF file
+    let elf_path = program_dir.join("program.elf");
+    fs::write(&elf_path, elf_bytes).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to write ELF file: {e}"),
+        )
+    })?;
+
+    // Write compiler version info
+    let version_path = program_dir.join("compiler_version.txt");
+    fs::write(&version_path, &req.compiler_version).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to write compiler version: {e}"),
+        )
+    })?;
 
     let program = match req.zkvm {
         ZkVMType::Risc0 => Program::Risc0(req.program_name.clone()),
         ZkVMType::SP1 => Program::SP1(req.program_name.clone()),
     };
     {
-        let mut programs = state.programs.write().unwrap();
+        let mut programs = state.programs.write().await;
         programs.insert(program_id.clone(), program);
     }
 
     Ok(Json(RegisterProgramResponse {
         program_id,
-        status: format!("compiled with {}", req.zkvm),
+        status: format!(
+            "registered with {} (compiler version: {})",
+            req.zkvm, req.compiler_version
+        ),
     }))
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::HashMap,
-        env::temp_dir,
-        sync::{Arc, RwLock},
-    };
-
     use super::*;
+    use ere_sp1::RV32_IM_SUCCINCT_ZKVM_ELF;
+    use std::collections::HashMap;
+    use std::fs;
+    use std::sync::Arc;
+    use tempfile::TempDir;
+    use tokio::sync::RwLock;
+    use zkvm_interface::Compiler;
+
+    // Helper function to create a test AppState
+    fn create_test_state() -> (AppState, TempDir) {
+        let temp_dir = TempDir::new().unwrap();
+        let programs_dir = temp_dir.path().join("programs");
+        fs::create_dir_all(&programs_dir).unwrap();
+
+        let state = AppState {
+            programs: Arc::new(RwLock::new(HashMap::new())),
+            programs_dir,
+        };
+
+        (state, temp_dir)
+    }
+
+    /// Compiles the basic example program and returns the base64-encoded ELF file as a String
+    fn compile_and_encode_elf() -> String {
+        use std::path::PathBuf;
+
+        let example_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("sp1")
+            .join("compile")
+            .join("basic");
+
+        let elf_bytes =
+            RV32_IM_SUCCINCT_ZKVM_ELF::compile(&example_dir).expect("Failed to compile example");
+        BASE64.encode(&elf_bytes)
+    }
 
     #[tokio::test]
-    async fn test_register_program() {
-        let state = AppState {
-            programs_dir: temp_dir(),
-            programs: Arc::new(RwLock::new(HashMap::new())),
+    async fn test_register_sp1_program() {
+        let (state, _temp_dir) = create_test_state();
+        let elf_file = compile_and_encode_elf();
+        let request = RegisterProgramRequest {
+            program_name: "basic".to_string(),
+            zkvm: ZkVMType::SP1,
+            elf_file,
+            compiler_version: "0.1.0".to_string(),
         };
-
-        let mut base64_encoded_string = String::new();
-        BASE64.encode_string(b"hello world~", &mut base64_encoded_string);
-
-        let req = RegisterProgramRequest {
-            program_name: "test_program".to_string(),
-            zkvm: ZkVMType::Risc0,
-            source_code: base64_encoded_string,
-        };
-
-        let result = register_program(State(state), Json(req)).await;
-        assert!(result.is_ok(),);
-
+        let result = register_program(State(state.clone()), Json(request)).await;
+        assert!(result.is_ok());
         let response = result.unwrap().0;
         assert!(!response.program_id.is_empty());
-        assert_eq!(response.status, "compiled with risc0");
+        assert!(response.status.contains("sp1"));
+        assert!(response.status.contains("0.1.0"));
+        let programs = state.programs.read().await;
+        assert!(programs.contains_key(&response.program_id));
+        match programs.get(&response.program_id).unwrap() {
+            Program::SP1(name) => assert_eq!(name, "basic"),
+            _ => panic!("Expected SP1 program"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_register_invalid_base64() {
+        let (state, _temp_dir) = create_test_state();
+
+        let request = RegisterProgramRequest {
+            program_name: "test_program".to_string(),
+            zkvm: ZkVMType::SP1,
+            elf_file: "invalid base64".to_string(),
+            compiler_version: "0.1.0".to_string(),
+        };
+
+        let result = register_program(State(state), Json(request)).await;
+        assert!(result.is_err());
+
+        let (status, message) = result.unwrap_err();
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert!(message.contains("Invalid base64 encoding"));
     }
 }
