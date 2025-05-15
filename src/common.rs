@@ -2,8 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     path::PathBuf,
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
+use tokio::sync::RwLock;
 
 /// TODO: maybe change from zkVMType to zkVMVendor
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
