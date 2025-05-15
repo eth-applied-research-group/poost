@@ -1747,7 +1747,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 [[package]]
 name = "ere-sp1"
 version = "0.1.0"
-source = "git+https://github.com/eth-applied-research-group/ere#53a0bf7b4b5a9241d94ded58aa4f9adcdec765cb"
+source = "git+https://github.com/eth-applied-research-group/ere#86d476b9ddda2d82337f13cfc1b8b21471585397"
 dependencies = [
  "bincode",
  "sp1-sdk",
@@ -1765,7 +1765,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "976dd42dc7e85965fe702eb8164f21f450704bdde31faefd6471dba214cb594e"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3697,6 +3697,7 @@ dependencies = [
  "ere-sp1",
  "hex",
  "http-body-util",
+ "indexmap 2.9.0",
  "once_cell",
  "rand 0.8.5",
  "serde",
@@ -3935,7 +3936,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4343,7 +4344,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5402,7 +5403,7 @@ dependencies = [
  "getrandom 0.3.3",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -6833,7 +6834,7 @@ dependencies = [
 [[package]]
 name = "zkvm-interface"
 version = "0.1.0"
-source = "git+https://github.com/eth-applied-research-group/ere#53a0bf7b4b5a9241d94ded58aa4f9adcdec765cb"
+source = "git+https://github.com/eth-applied-research-group/ere#86d476b9ddda2d82337f13cfc1b8b21471585397"
 dependencies = [
  "anyhow",
  "bincode",

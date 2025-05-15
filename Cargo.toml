@@ -18,6 +18,7 @@ tower-http = { version = "0.5", features = ["trace"] }
 wgpu = { version = "25" }
 once_cell = "1.21.3"
 base64 = "0.21"
+indexmap = { version = "2.9.0", features = ["serde"] }
 
 zkvm-interface = { git = "https://github.com/eth-applied-research-group/ere", package = "zkvm-interface" }
 ere-sp1 = { git = "https://github.com/eth-applied-research-group/ere", package = "ere-sp1" }
