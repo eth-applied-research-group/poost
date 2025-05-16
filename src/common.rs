@@ -1,3 +1,4 @@
+use ere_sp1::EreSP1;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
@@ -46,10 +47,11 @@ impl std::fmt::Display for ZkVMType {
     }
 }
 
-#[derive(Debug, Clone)]
+// TODO: Make Ere zkVMs implement Debug
+#[derive(Clone)]
 pub enum Program {
     Risc0(String),
-    SP1(Vec<u8>),
+    SP1(&'static EreSP1),
 }
 
 #[derive(Clone)]
