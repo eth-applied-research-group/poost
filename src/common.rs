@@ -48,15 +48,17 @@ impl std::fmt::Display for ZkVMType {
 }
 
 // TODO: Make Ere zkVMs implement Debug
+/// zkVMInstance holds a static references to a zkVM with
+/// a program already loaded into it.
 #[derive(Clone)]
-pub enum Program {
+pub enum zkVMInstance {
     Risc0(String),
     SP1(&'static EreSP1),
 }
 
 #[derive(Clone)]
 pub struct AppState {
-    pub programs: Arc<RwLock<HashMap<ProgramID, Program>>>,
+    pub programs: Arc<RwLock<HashMap<ProgramID, zkVMInstance>>>,
 }
 
 #[cfg(test)]

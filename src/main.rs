@@ -6,7 +6,7 @@ use axum::{
     Router,
     routing::{get, post},
 };
-use common::{AppState, Program, ProgramID, ZkVMType};
+use common::{AppState, zkVMInstance, ProgramID, ZkVMType};
 use endpoints::{execute_program, get_server_info, prove_program, verify_proof};
 use program::get_sp1_compiled_program;
 use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc};
@@ -67,7 +67,7 @@ async fn init_state() -> Router {
     let program_id = ProgramID::from(ZkVMType::SP1);
     {
         let mut programs = state.programs.write().await;
-        programs.insert(program_id.clone(), Program::SP1(sp1_zkvm));
+        programs.insert(program_id.clone(), zkVMInstance::SP1(sp1_zkvm));
     }
 
     println!("SP1 program saved with ID: {:?}", program_id);

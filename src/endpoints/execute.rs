@@ -32,7 +32,7 @@ pub async fn execute_program(
     if let Some(program) = state.programs.read().await.get(&program_id) {
         // Check if it's SP1 and use ere-sp1
         match program {
-            crate::common::Program::SP1(zkvm) => {
+            crate::common::zkVMInstance::SP1(zkvm) => {
                 let start = Instant::now();
 
                 // Create input and execute using EreSP1
@@ -78,7 +78,7 @@ pub async fn execute_program(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::{Program, ProgramID};
+    use crate::common::{ProgramID, zkVMInstance};
     use crate::program::get_sp1_compiled_program;
 
     use std::collections::HashMap;
@@ -110,7 +110,7 @@ mod tests {
 
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), Program::SP1(zkvm));
+            programs.insert(program_id.clone(), zkVMInstance::SP1(zkvm));
         }
 
         let request = ExecuteRequest {
@@ -156,7 +156,7 @@ mod tests {
         let program_id = ProgramID("test_program".to_string());
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), Program::Risc0("test".to_string()));
+            programs.insert(program_id.clone(), zkVMInstance::Risc0("test".to_string()));
         }
 
         let request = ExecuteRequest {

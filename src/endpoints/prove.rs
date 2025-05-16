@@ -28,7 +28,7 @@ pub async fn prove_program(
     if let Some(program) = state.programs.read().await.get(&program_id) {
         // Check if it's SP1 and use ere-sp1
         match program {
-            crate::common::Program::SP1(zkvm) => {
+            crate::common::zkVMInstance::SP1(zkvm) => {
                 let input: Input = req.input.into();
 
                 let (proof, _report) = zkvm.prove(&input).map_err(|e| {
@@ -53,7 +53,7 @@ pub async fn prove_program(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::{Program, ZkVMType};
+    use crate::common::{ZkVMType, zkVMInstance};
     use crate::program::get_sp1_compiled_program;
     use std::collections::HashMap;
     use std::fs;
@@ -82,7 +82,7 @@ mod tests {
         let program_id = ProgramID::from(ZkVMType::SP1);
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), Program::SP1(sp1_zkvm));
+            programs.insert(program_id.clone(), zkVMInstance::SP1(sp1_zkvm));
         }
 
         let request = ProveRequest {
@@ -127,7 +127,7 @@ mod tests {
         let program_id = ProgramID("test_program".to_string());
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), Program::Risc0("test".to_string()));
+            programs.insert(program_id.clone(), zkVMInstance::Risc0("test".to_string()));
         }
 
         let request = ProveRequest {

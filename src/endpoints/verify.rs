@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use zkvm_interface::zkVM;
 
-use crate::common::{AppState, Program, ProgramID};
+use crate::common::{AppState, zkVMInstance, ProgramID};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VerifyRequest {
@@ -26,7 +26,7 @@ pub async fn verify_proof(
 ) -> Result<Json<VerifyResponse>, (StatusCode, String)> {
     if let Some(program) = state.programs.read().await.get(&req.program_id) {
         match program {
-            Program::SP1(zkvm) => {
+            zkVMInstance::SP1(zkvm) => {
                 // Decode the proof
                 let proof_bytes = BASE64.decode(&req.proof).map_err(|e| {
                     (
@@ -61,7 +61,7 @@ pub async fn verify_proof(
 mod tests {
     use super::*;
     use crate::{
-        common::{Program, ZkVMType},
+        common::{zkVMInstance, ZkVMType},
         endpoints::{prove::ProveRequest, prove_program},
         program::{ProgramInput, get_sp1_compiled_program},
     };
@@ -94,7 +94,7 @@ mod tests {
         };
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), Program::SP1(sp1_zkvm));
+            programs.insert(program_id.clone(), zkVMInstance::SP1(sp1_zkvm));
         }
 
         let request = ProveRequest {
@@ -132,7 +132,7 @@ mod tests {
         let sp1_zkvm = get_sp1_compiled_program();
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), Program::SP1(sp1_zkvm));
+            programs.insert(program_id.clone(), zkVMInstance::SP1(sp1_zkvm));
         }
 
         let request = VerifyRequest {
@@ -170,7 +170,7 @@ mod tests {
         let program_id = ProgramID("test_program".to_string());
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), Program::Risc0("test".to_string()));
+            programs.insert(program_id.clone(), zkVMInstance::Risc0("test".to_string()));
         }
 
         let request = VerifyRequest {
