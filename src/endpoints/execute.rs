@@ -1,6 +1,4 @@
 use axum::{Json, extract::State, http::StatusCode};
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use ere_sp1::EreSP1;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
@@ -8,7 +6,7 @@ use tracing::instrument;
 use zkvm_interface::{Input, zkVM};
 
 use crate::common::{AppState, ProgramID};
-use crate::program_input::ProgramInput;
+use crate::program::ProgramInput;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExecuteRequest {
@@ -34,7 +32,7 @@ pub async fn execute_program(
     if let Some(program) = state.programs.read().await.get(&program_id) {
         // Check if it's SP1 and use ere-sp1
         match program {
-            crate::common::Program::SP1(elf_bytes) => {
+            crate::common::Program::SP1(zkvm) => {
                 let start = Instant::now();
 
                 // Create input and execute using EreSP1
@@ -52,7 +50,6 @@ pub async fn execute_program(
                     )
                 })?;
 
-                let zkvm = EreSP1::new(elf_bytes.clone());
                 let report = zkvm.execute(&input).map_err(|e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
@@ -82,7 +79,7 @@ pub async fn execute_program(
 mod tests {
     use super::*;
     use crate::common::{Program, ProgramID};
-    use crate::test_utils::get_sp1_compiled_program;
+    use crate::program::get_sp1_compiled_program;
 
     use std::collections::HashMap;
     use std::fs;
@@ -109,11 +106,11 @@ mod tests {
         let (state, _temp_dir) = create_test_state();
         let program_id = ProgramID("sp1".to_string());
 
-        let program = get_sp1_compiled_program();
+        let zkvm = get_sp1_compiled_program();
 
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), program);
+            programs.insert(program_id.clone(), Program::SP1(zkvm));
         }
 
         let request = ExecuteRequest {

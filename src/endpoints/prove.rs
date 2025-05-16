@@ -1,11 +1,10 @@
 use axum::{Json, extract::State, http::StatusCode};
-use ere_sp1::EreSP1;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use zkvm_interface::{Input, zkVM};
 
 use crate::common::{AppState, ProgramID};
-use crate::program_input::ProgramInput;
+use crate::program::ProgramInput;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProveRequest {
@@ -29,10 +28,9 @@ pub async fn prove_program(
     if let Some(program) = state.programs.read().await.get(&program_id) {
         // Check if it's SP1 and use ere-sp1
         match program {
-            crate::common::Program::SP1(elf_bytes) => {
+            crate::common::Program::SP1(zkvm) => {
                 let input: Input = req.input.into();
 
-                let zkvm = EreSP1::new(elf_bytes.clone());
                 let (proof, _report) = zkvm.prove(&input).map_err(|e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
@@ -44,7 +42,7 @@ pub async fn prove_program(
             }
             _ => Err((
                 StatusCode::NOT_IMPLEMENTED,
-                format!("unsupported zkvm {:?}", program),
+                "unimplemented zkvm".to_string(),
             )),
         }
     } else {
@@ -56,7 +54,7 @@ pub async fn prove_program(
 mod tests {
     use super::*;
     use crate::common::{Program, ZkVMType};
-    use crate::test_utils::get_sp1_compiled_program;
+    use crate::program::get_sp1_compiled_program;
     use std::collections::HashMap;
     use std::fs;
     use std::sync::Arc;
@@ -78,12 +76,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_prove_program_success() {
-        let program = get_sp1_compiled_program();
+        let sp1_zkvm = get_sp1_compiled_program();
+
         let (state, _temp_dir) = create_test_state();
         let program_id = ProgramID::from(ZkVMType::SP1);
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), program);
+            programs.insert(program_id.clone(), Program::SP1(sp1_zkvm));
         }
 
         let request = ProveRequest {

@@ -1,6 +1,5 @@
 use axum::{Json, extract::State, http::StatusCode};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use ere_sp1::EreSP1;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use zkvm_interface::zkVM;
@@ -27,7 +26,7 @@ pub async fn verify_proof(
 ) -> Result<Json<VerifyResponse>, (StatusCode, String)> {
     if let Some(program) = state.programs.read().await.get(&req.program_id) {
         match program {
-            Program::SP1(elf_bytes) => {
+            Program::SP1(zkvm) => {
                 // Decode the proof
                 let proof_bytes = BASE64.decode(&req.proof).map_err(|e| {
                     (
@@ -36,8 +35,6 @@ pub async fn verify_proof(
                     )
                 })?;
 
-                // Create EreSP1 instance and verify
-                let zkvm = EreSP1::new(elf_bytes.clone());
                 zkvm.verify(&proof_bytes).map_err(|e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
@@ -66,8 +63,7 @@ mod tests {
     use crate::{
         common::{Program, ZkVMType},
         endpoints::{prove::ProveRequest, prove_program},
-        program_input::ProgramInput,
-        test_utils::get_sp1_compiled_program,
+        program::{ProgramInput, get_sp1_compiled_program},
     };
     use std::collections::HashMap;
     use std::fs;
@@ -91,14 +87,14 @@ mod tests {
     #[tokio::test]
     async fn test_verify_proof_success() {
         let program_id = ProgramID::from(ZkVMType::SP1);
-        let program = get_sp1_compiled_program();
+        let sp1_zkvm = get_sp1_compiled_program();
 
         let state = AppState {
             programs: Arc::new(RwLock::new(HashMap::new())),
         };
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), program);
+            programs.insert(program_id.clone(), Program::SP1(sp1_zkvm));
         }
 
         let request = ProveRequest {
@@ -133,10 +129,10 @@ mod tests {
         let program_id = ProgramID::from(ZkVMType::SP1);
 
         // Read and encode the fixed program's ELF
-        let program = get_sp1_compiled_program();
+        let sp1_zkvm = get_sp1_compiled_program();
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), program);
+            programs.insert(program_id.clone(), Program::SP1(sp1_zkvm));
         }
 
         let request = VerifyRequest {

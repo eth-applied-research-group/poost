@@ -1,8 +1,6 @@
 mod common;
 mod endpoints;
-mod program_input;
-#[cfg(test)]
-mod test_utils;
+mod program;
 
 use axum::{
     Router,
@@ -10,12 +8,11 @@ use axum::{
 };
 use common::{AppState, Program, ProgramID, ZkVMType};
 use endpoints::{execute_program, get_server_info, prove_program, verify_proof};
-use ere_sp1::RV32_IM_SUCCINCT_ZKVM_ELF;
+use program::get_sp1_compiled_program;
 use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc};
 use tokio::net::TcpListener;
 use tokio::signal;
 use tower_http::trace::TraceLayer;
-use zkvm_interface::Compiler;
 
 fn app(state: AppState) -> Router {
     Router::new()
@@ -62,17 +59,15 @@ async fn init_state() -> Router {
     };
 
     // Compile the SP1 program at startup
-    let sp1_program_dir = PathBuf::from("programs/sp1");
     println!("Compiling SP1 program...");
-    let program = RV32_IM_SUCCINCT_ZKVM_ELF::compile(&sp1_program_dir)
-        .expect("Failed to compile SP1 program");
+    let sp1_zkvm = get_sp1_compiled_program();
     println!("SP1 program compiled successfully");
 
-    // Save the compiled program in the app state with a fixed program ID
+    // Save the compiled zkvm program instance in the app state with a fixed program ID
     let program_id = ProgramID::from(ZkVMType::SP1);
     {
         let mut programs = state.programs.write().await;
-        programs.insert(program_id.clone(), Program::SP1(program));
+        programs.insert(program_id.clone(), Program::SP1(sp1_zkvm));
     }
 
     println!("SP1 program saved with ID: {:?}", program_id);
