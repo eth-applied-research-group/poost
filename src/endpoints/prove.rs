@@ -16,6 +16,7 @@ pub struct ProveRequest {
 pub struct ProveResponse {
     pub program_id: ProgramID,
     pub proof: Vec<u8>,
+    pub proving_time_milliseconds: u128,
 }
 
 #[axum::debug_handler]
@@ -25,29 +26,37 @@ pub async fn prove_program(
     Json(req): Json<ProveRequest>,
 ) -> Result<Json<ProveResponse>, (StatusCode, String)> {
     let program_id = req.program_id.clone();
-    if let Some(program) = state.programs.read().await.get(&program_id) {
-        // Check if it's SP1 and use ere-sp1
-        match program {
-            crate::common::zkVMInstance::SP1(zkvm) => {
-                let input: Input = req.input.into();
+    let programs = state.programs.read().await;
 
-                let (proof, _report) = zkvm.prove(&input).map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to generate proof: {}", e),
-                    )
-                })?;
+    let program = programs
+        .get(&program_id)
+        .ok_or((StatusCode::NOT_FOUND, "Program not found".to_string()))?;
 
-                Ok(Json(ProveResponse { program_id, proof }))
-            }
-            _ => Err((
+    // Early return if not SP1
+    let zkvm = match program {
+        crate::common::zkVMInstance::SP1(zkvm) => zkvm,
+        _ => {
+            return Err((
                 StatusCode::NOT_IMPLEMENTED,
-                "unimplemented zkvm".to_string(),
-            )),
+                "Only SP1 proving is currently supported".to_string(),
+            ));
         }
-    } else {
-        Err((StatusCode::NOT_FOUND, "Program not found".to_string()))
-    }
+    };
+
+    let input: Input = req.input.into();
+
+    let (proof, report) = zkvm.prove(&input).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to generate proof: {}", e),
+        )
+    })?;
+
+    Ok(Json(ProveResponse {
+        program_id,
+        proof,
+        proving_time_milliseconds: report.proving_time.as_millis(),
+    }))
 }
 
 #[cfg(test)]
