@@ -66,7 +66,7 @@ The following endpoints are available:
 
 ## Supported Backends
 
-Poost uses `Ere` for backend integration. Not all backends will be integrated, however since the API for Ere is the same for all, it is easy to add backends already supported by Ere.
+Poost uses `Ere` for backend integration. Not all backends will be integrated, however since the API for Ere is uniform, it is easy to add backends already supported by Ere.
 
 ## Contributing
 
