@@ -1,6 +1,8 @@
 mod common;
 mod endpoints;
 mod program_input;
+#[cfg(test)]
+mod test_utils;
 
 use axum::{
     Router,
@@ -39,13 +41,25 @@ async fn main() -> anyhow::Result<()> {
         .with_ansi(true)
         .init();
 
+    let app = init_state().await;
+
+    let addr: SocketAddr = "0.0.0.0:3000".parse()?;
+    println!("ZKVM Program Service listening on {addr}");
+
+    let listener = TcpListener::bind(addr).await?;
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+    Ok(())
+}
+
+async fn init_state() -> Router {
     // Create programs directory if it doesn't exist
     let programs_dir = PathBuf::from("programs");
     fs::create_dir_all(&programs_dir).expect("Failed to create programs directory");
 
     let state = AppState {
         programs: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
-        programs_dir: programs_dir.clone(),
     };
 
     // Compile the SP1 program at startup
@@ -61,19 +75,13 @@ async fn main() -> anyhow::Result<()> {
         let mut programs = state.programs.write().await;
         programs.insert(program_id.clone(), Program::SP1(BASE64.encode(&program)));
     }
+
     println!("SP1 program saved with ID: {}", program_id);
 
     // Build our application with a route
     let app = app(state);
 
-    let addr: SocketAddr = "0.0.0.0:3000".parse()?;
-    println!("ZKVM Program Service listening on {addr}");
-
-    let listener = TcpListener::bind(addr).await?;
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
-    Ok(())
+    app
 }
 
 async fn shutdown_signal() {
