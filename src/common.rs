@@ -9,27 +9,27 @@ pub struct ProgramID(pub String);
 
 // TODO: We may use a hash of the elf binary or program
 // TODO: in which case, we would remove this From impl
-impl From<ZkVMType> for ProgramID {
-    fn from(value: ZkVMType) -> Self {
+impl From<zkVMVendor> for ProgramID {
+    fn from(value: zkVMVendor) -> Self {
         ProgramID(format!("{}", value))
     }
 }
 
-/// TODO: maybe change from zkVMType to zkVMVendor
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
-pub enum ZkVMType {
+#[allow(non_camel_case_types)]
+pub enum zkVMVendor {
     Risc0,
     SP1,
 }
 
-impl std::str::FromStr for ZkVMType {
+impl std::str::FromStr for zkVMVendor {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "risc0" => Ok(ZkVMType::Risc0),
-            "sp1" => Ok(ZkVMType::SP1),
+            "risc0" => Ok(zkVMVendor::Risc0),
+            "sp1" => Ok(zkVMVendor::SP1),
             _ => Err(format!(
                 "Unsupported zkVM type: {}. Supported types are: risc0, sp1",
                 s
@@ -38,11 +38,11 @@ impl std::str::FromStr for ZkVMType {
     }
 }
 
-impl std::fmt::Display for ZkVMType {
+impl std::fmt::Display for zkVMVendor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ZkVMType::Risc0 => write!(f, "risc0"),
-            ZkVMType::SP1 => write!(f, "sp1"),
+            zkVMVendor::Risc0 => write!(f, "risc0"),
+            zkVMVendor::SP1 => write!(f, "sp1"),
         }
     }
 }
@@ -51,6 +51,7 @@ impl std::fmt::Display for ZkVMType {
 /// zkVMInstance holds a static references to a zkVM with
 /// a program already loaded into it.
 #[derive(Clone)]
+#[allow(non_camel_case_types)]
 pub enum zkVMInstance {
     Risc0(String),
     SP1(&'static EreSP1),
@@ -68,9 +69,9 @@ mod tests {
 
     #[test]
     fn test_zkvm_type_parsing() {
-        assert_eq!("risc0".parse::<ZkVMType>().unwrap(), ZkVMType::Risc0);
-        assert_eq!("sp1".parse::<ZkVMType>().unwrap(), ZkVMType::SP1);
-        assert!("invalid".parse::<ZkVMType>().is_err());
-        assert!("".parse::<ZkVMType>().is_err());
+        assert_eq!("risc0".parse::<zkVMVendor>().unwrap(), zkVMVendor::Risc0);
+        assert_eq!("sp1".parse::<zkVMVendor>().unwrap(), zkVMVendor::SP1);
+        assert!("invalid".parse::<zkVMVendor>().is_err());
+        assert!("".parse::<zkVMVendor>().is_err());
     }
 }

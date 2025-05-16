@@ -6,7 +6,7 @@ use axum::{
     Router,
     routing::{get, post},
 };
-use common::{AppState, zkVMInstance, ProgramID, ZkVMType};
+use common::{AppState, ProgramID, zkVMInstance, zkVMVendor};
 use endpoints::{execute_program, get_server_info, prove_program, verify_proof};
 use program::get_sp1_compiled_program;
 use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc};
@@ -22,7 +22,7 @@ fn app(state: AppState) -> Router {
         .route("/info", get(get_server_info))
         .with_state(state)
         .layer(TraceLayer::new_for_http())
-        // 10MB limit to account for the proof size 
+        // 10MB limit to account for the proof size
         // and the possibly large input size
         .layer(axum::extract::DefaultBodyLimit::max(10 * 1024 * 1024))
 }
@@ -67,7 +67,7 @@ async fn init_state() -> Router {
     println!("SP1 program compiled successfully");
 
     // Save the compiled zkvm program instance in the app state with a fixed program ID
-    let program_id = ProgramID::from(ZkVMType::SP1);
+    let program_id = ProgramID::from(zkVMVendor::SP1);
     {
         let mut programs = state.programs.write().await;
         programs.insert(program_id.clone(), zkVMInstance::SP1(sp1_zkvm));

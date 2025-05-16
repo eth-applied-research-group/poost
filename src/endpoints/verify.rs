@@ -60,7 +60,7 @@ pub async fn verify_proof(
 mod tests {
     use super::*;
     use crate::{
-        common::{ZkVMType, zkVMInstance},
+        common::{zkVMVendor, zkVMInstance},
         endpoints::{prove::ProveRequest, prove_program},
         program::{ProgramInput, get_sp1_compiled_program},
     };
@@ -85,7 +85,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_verify_proof_success() {
-        let program_id = ProgramID::from(ZkVMType::SP1);
+        let program_id = ProgramID::from(zkVMVendor::SP1);
         let sp1_zkvm = get_sp1_compiled_program();
 
         let state = AppState {
@@ -125,7 +125,7 @@ mod tests {
     #[tokio::test]
     async fn test_verify_proof_invalid_proof() {
         let (state, _temp_dir) = create_test_state();
-        let program_id = ProgramID::from(ZkVMType::SP1);
+        let program_id = ProgramID::from(zkVMVendor::SP1);
 
         // Read and encode the fixed program's ELF
         let sp1_zkvm = get_sp1_compiled_program();

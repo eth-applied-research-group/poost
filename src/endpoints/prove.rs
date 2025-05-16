@@ -62,7 +62,7 @@ pub async fn prove_program(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::{ZkVMType, zkVMInstance};
+    use crate::common::{zkVMInstance, zkVMVendor};
     use crate::program::get_sp1_compiled_program;
     use std::collections::HashMap;
     use std::fs;
@@ -88,7 +88,7 @@ mod tests {
         let sp1_zkvm = get_sp1_compiled_program();
 
         let (state, _temp_dir) = create_test_state();
-        let program_id = ProgramID::from(ZkVMType::SP1);
+        let program_id = ProgramID::from(zkVMVendor::SP1);
         {
             let mut programs = state.programs.write().await;
             programs.insert(program_id.clone(), zkVMInstance::SP1(sp1_zkvm));
