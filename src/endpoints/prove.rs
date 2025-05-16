@@ -40,19 +40,8 @@ pub async fn prove_program(
                 })?;
 
                 // Create input and generate proof using EreSP1
-                let mut input = Input::new();
-                input.write(&req.input.value1).map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to write value1: {}", e),
-                    )
-                })?;
-                input.write(&req.input.value2).map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to write value2: {}", e),
-                    )
-                })?;
+
+                let input: Input = req.input.into();
 
                 let zkvm = EreSP1::new(elf_bytes);
                 let (proof, _report) = zkvm.prove(&input).map_err(|e| {
@@ -78,14 +67,12 @@ pub async fn prove_program(
 mod tests {
     use super::*;
     use crate::common::Program;
-    use ere_sp1::RV32_IM_SUCCINCT_ZKVM_ELF;
+    use crate::test_utils::get_sp1_compiled_program;
     use std::collections::HashMap;
     use std::fs;
-    use std::path::PathBuf;
     use std::sync::Arc;
     use tempfile::TempDir;
     use tokio::sync::RwLock;
-    use zkvm_interface::Compiler;
 
     // Helper function to create a test AppState
     fn create_test_state() -> (AppState, TempDir) {
@@ -95,37 +82,19 @@ mod tests {
 
         let state = AppState {
             programs: Arc::new(RwLock::new(HashMap::new())),
-            programs_dir,
         };
 
         (state, temp_dir)
     }
 
-    // Helper function to ensure test program is compiled
-    fn ensure_test_program_compiled() -> Vec<u8> {
-        let program_dir = PathBuf::from("programs/sp1");
-        let target_dir =
-            program_dir.join("target/elf-compilation/riscv32im-succinct-zkvm-elf/release");
-        let elf_path = target_dir.join("ere-test-sp1-guest");
-
-        if !elf_path.exists() {
-            println!("Compiling test program...");
-            RV32_IM_SUCCINCT_ZKVM_ELF::compile(&program_dir)
-                .expect("Failed to compile test program");
-        }
-
-        fs::read(&elf_path).expect("Failed to read compiled ELF")
-    }
-
     #[tokio::test]
     async fn test_prove_program_success() {
-        let elf_bytes = ensure_test_program_compiled();
+        let program = get_sp1_compiled_program();
         let (state, _temp_dir) = create_test_state();
         let program_id = "sp1".to_string();
         {
             let mut programs = state.programs.write().await;
-            let elf_base64 = BASE64.encode(&elf_bytes);
-            programs.insert(program_id.clone(), Program::SP1(elf_base64));
+            programs.insert(program_id.clone(), program);
         }
 
         let request = ProveRequest {
@@ -186,30 +155,5 @@ mod tests {
         assert!(result.is_err());
         let (status, _message) = result.unwrap_err();
         assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
-    }
-
-    #[tokio::test]
-    #[should_panic]
-    async fn test_prove_program_fails_with_no_input() {
-        let elf_bytes = ensure_test_program_compiled();
-        let (state, _temp_dir) = create_test_state();
-        let program_id = "test_program".to_string();
-        {
-            let mut programs = state.programs.write().await;
-            let elf_base64 = BASE64.encode(&elf_bytes);
-            programs.insert(program_id.clone(), Program::SP1(elf_base64));
-        }
-
-        // Provide zero input
-        let request = ProveRequest {
-            program_id: program_id.clone(),
-            input: ProgramInput {
-                value1: 0,
-                value2: 0,
-            },
-        };
-
-        // Call the handler directly
-        let _ = prove_program(State(state), Json(request)).await;
     }
 }

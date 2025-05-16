@@ -71,13 +71,17 @@ pub async fn verify_proof(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::Program;
+    use crate::{
+        common::Program,
+        endpoints::{prove::ProveRequest, prove_program},
+        program_input::ProgramInput,
+        test_utils::get_sp1_compiled_program,
+    };
     use std::collections::HashMap;
     use std::fs;
     use std::sync::Arc;
     use tempfile::TempDir;
     use tokio::sync::RwLock;
-    use zkvm_interface::{Input, zkVM};
 
     // Helper function to create a test AppState
     fn create_test_state() -> (AppState, TempDir) {
@@ -87,7 +91,6 @@ mod tests {
 
         let state = AppState {
             programs: Arc::new(RwLock::new(HashMap::new())),
-            programs_dir,
         };
 
         (state, temp_dir)
@@ -95,34 +98,33 @@ mod tests {
 
     #[tokio::test]
     async fn test_verify_proof_success() {
-        // Create a test program
         let program_id = "sp1".to_string();
-        let elf_path = "programs/sp1/target/elf-compilation/riscv32im-succinct-zkvm-elf/release/ere-test-sp1-guest";
-        let elf_bytes = fs::read(elf_path).expect("Failed to read ELF file");
-        let elf_base64 = base64::engine::general_purpose::STANDARD.encode(&elf_bytes);
-        let program = Program::SP1(elf_base64);
+        let program = get_sp1_compiled_program();
+
         let state = AppState {
             programs: Arc::new(RwLock::new(HashMap::new())),
-            programs_dir: std::env::temp_dir().join("axiom_demo_test"),
         };
         {
             let mut programs = state.programs.write().await;
             programs.insert(program_id.clone(), program);
         }
 
-        // Create a test program with some input
-        let mut input = Input::new();
-        input.write(&42u32).unwrap(); // Write n as u32
-        input.write(&10u16).unwrap(); // Write a as u16
+        let request = ProveRequest {
+            program_id: program_id.clone(),
+            input: ProgramInput {
+                value1: 42,
+                value2: 10,
+            },
+        };
 
-        // Generate a proof
-        let zkvm = ere_sp1::EreSP1::new(elf_bytes);
-        let (proof_bytes, _report) = zkvm.prove(&input).unwrap();
+        let result = prove_program(State(state.clone()), Json(request))
+            .await
+            .unwrap();
 
         // Create a request
         let request = VerifyRequest {
             program_id: program_id.clone(),
-            proof: base64::engine::general_purpose::STANDARD.encode(&proof_bytes),
+            proof: base64::engine::general_purpose::STANDARD.encode(&result.proof),
         };
 
         // Call the handler
@@ -139,13 +141,10 @@ mod tests {
         let program_id = "sp1".to_string();
 
         // Read and encode the fixed program's ELF
-        let elf_path = "programs/sp1/target/elf-compilation/riscv32im-succinct-zkvm-elf/release/ere-test-sp1-guest";
-        let elf_bytes = fs::read(elf_path).expect("Failed to read ELF file");
-        let elf_base64 = BASE64.encode(&elf_bytes);
-
+        let program = get_sp1_compiled_program();
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), Program::SP1(elf_base64));
+            programs.insert(program_id.clone(), program);
         }
 
         let request = VerifyRequest {

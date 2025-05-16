@@ -90,14 +90,14 @@ pub async fn execute_program(
 mod tests {
     use super::*;
     use crate::common::Program;
-    use ere_sp1::RV32_IM_SUCCINCT_ZKVM_ELF;
+    use crate::test_utils::get_sp1_compiled_program;
+
     use std::collections::HashMap;
     use std::fs;
-    use std::path::PathBuf;
+
     use std::sync::Arc;
     use tempfile::TempDir;
     use tokio::sync::RwLock;
-    use zkvm_interface::Compiler;
 
     // Helper function to create a test AppState
     fn create_test_state() -> (AppState, TempDir) {
@@ -107,7 +107,6 @@ mod tests {
 
         let state = AppState {
             programs: Arc::new(RwLock::new(HashMap::new())),
-            programs_dir,
         };
 
         (state, temp_dir)
@@ -118,14 +117,11 @@ mod tests {
         let (state, _temp_dir) = create_test_state();
         let program_id = "sp1".to_string();
 
-        let program_dir = PathBuf::from("programs/sp1");
-        let elf_bytes = RV32_IM_SUCCINCT_ZKVM_ELF::compile(&program_dir).unwrap();
-
-        let elf_base64 = BASE64.encode(elf_bytes);
+        let program = get_sp1_compiled_program();
 
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), Program::SP1(elf_base64));
+            programs.insert(program_id.clone(), program);
         }
 
         let request = ExecuteRequest {
