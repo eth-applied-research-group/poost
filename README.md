@@ -44,66 +44,6 @@ cargo run --release
 
 The server will start on `http://localhost:3000` by default.
 
-### API Documentation
-
-#### Available Endpoints
-
-1. **Get System Information**
-
-   ```http
-   GET /info
-   ```
-
-   Returns information about the server's system resources and configuration.
-
-2. **Execute Program**
-
-   ```http
-   POST /execute
-   Content-Type: application/json
-
-   {
-     "program_id": "sp1",
-     "input": {
-       "value1": 10,
-       "value2": 100
-     }
-   }
-   ```
-
-   Executes a program with the given inputs and returns execution metrics.
-
-3. **Generate Proof**
-
-   ```http
-   POST /prove
-   Content-Type: application/json
-
-   {
-     "program_id": "sp1",
-     "input": {
-       "value1": 10,
-       "value2": 100
-     }
-   }
-   ```
-
-   Generates a zero-knowledge proof for program execution with given inputs.
-
-4. **Verify Proof**
-
-   ```http
-   POST /verify
-   Content-Type: application/json
-
-   {
-     "program_id": "sp1",
-     "proof": "<proof-bytes>"
-   }
-   ```
-
-   Verifies a previously generated zero-knowledge proof.
-
 ### Quick Testing
 
 A test workflow script is provided to demonstrate the API usage:
