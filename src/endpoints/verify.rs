@@ -15,6 +15,8 @@ pub struct VerifyRequest {
 pub struct VerifyResponse {
     pub program_id: ProgramID,
     pub verified: bool,
+    // Empty if verification returned true
+    pub failure_reason: String,
 }
 
 #[axum::debug_handler]
@@ -23,29 +25,35 @@ pub async fn verify_proof(
     State(state): State<AppState>,
     Json(req): Json<VerifyRequest>,
 ) -> Result<Json<VerifyResponse>, (StatusCode, String)> {
-    if let Some(program) = state.programs.read().await.get(&req.program_id) {
-        match program {
-            zkVMInstance::SP1(zkvm) => {
-                zkvm.verify(&req.proof).map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Verification failed: {}", e),
-                    )
-                })?;
+    // Check if the program_id is correct
+    let programs = state.programs.read().await;
 
-                Ok(Json(VerifyResponse {
-                    program_id: req.program_id,
-                    verified: true,
-                }))
-            }
-            _ => Err((
+    let program = programs
+        .get(&req.program_id)
+        .ok_or((StatusCode::NOT_FOUND, "Program not found".to_string()))?;
+
+    // Early return if not SP1
+    let zkvm = match program {
+        zkVMInstance::SP1(zkvm) => zkvm,
+        _ => {
+            return Err((
                 StatusCode::NOT_IMPLEMENTED,
-                "Only SP1 verification is supported".to_string(),
-            )),
+                "Only SP1 verification is currently supported".to_string(),
+            ));
         }
-    } else {
-        Err((StatusCode::NOT_FOUND, "Program not found".to_string()))
-    }
+    };
+
+    // Verify the proof
+    let (verified, failure_reason) = match zkvm.verify(&req.proof) {
+        Ok(_) => (true, String::default()),
+        Err(err) => (false, format!("{}", err)),
+    };
+
+    Ok(Json(VerifyResponse {
+        program_id: req.program_id,
+        verified,
+        failure_reason,
+    }))
 }
 
 #[cfg(test)]
