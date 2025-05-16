@@ -60,7 +60,7 @@ pub async fn verify_proof(
 mod tests {
     use super::*;
     use crate::{
-        common::{zkVMVendor, zkVMInstance},
+        common::{zkVMInstance, zkVMVendor},
         endpoints::{prove::ProveRequest, prove_program},
         program::{ProgramInput, get_sp1_compiled_program},
     };
