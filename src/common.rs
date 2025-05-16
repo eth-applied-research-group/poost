@@ -2,6 +2,18 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Hash)]
+#[serde(transparent)]
+pub struct ProgramID(pub String);
+
+// TODO: We may use a hash of the elf binary or program
+// TODO: in which case, we would remove this From impl
+impl From<ZkVMType> for ProgramID {
+    fn from(value: ZkVMType) -> Self {
+        ProgramID(format!("{}", value))
+    }
+}
+
 /// TODO: maybe change from zkVMType to zkVMVendor
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -37,12 +49,12 @@ impl std::fmt::Display for ZkVMType {
 #[derive(Debug, Clone)]
 pub enum Program {
     Risc0(String),
-    SP1(String),
+    SP1(Vec<u8>),
 }
 
 #[derive(Clone)]
 pub struct AppState {
-    pub programs: Arc<RwLock<HashMap<String, Program>>>,
+    pub programs: Arc<RwLock<HashMap<ProgramID, Program>>>,
 }
 
 #[cfg(test)]
