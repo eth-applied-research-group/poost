@@ -1,15 +1,14 @@
 use axum::{Json, extract::State, http::StatusCode};
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use zkvm_interface::zkVM;
 
-use crate::common::{AppState, zkVMInstance, ProgramID};
+use crate::common::{AppState, ProgramID, zkVMInstance};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VerifyRequest {
     pub program_id: ProgramID,
-    pub proof: String,
+    pub proof: Vec<u8>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -27,15 +26,7 @@ pub async fn verify_proof(
     if let Some(program) = state.programs.read().await.get(&req.program_id) {
         match program {
             zkVMInstance::SP1(zkvm) => {
-                // Decode the proof
-                let proof_bytes = BASE64.decode(&req.proof).map_err(|e| {
-                    (
-                        StatusCode::BAD_REQUEST,
-                        format!("Failed to decode proof: {}", e),
-                    )
-                })?;
-
-                zkvm.verify(&proof_bytes).map_err(|e| {
+                zkvm.verify(&req.proof).map_err(|e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
                         format!("Verification failed: {}", e),
@@ -61,7 +52,7 @@ pub async fn verify_proof(
 mod tests {
     use super::*;
     use crate::{
-        common::{zkVMInstance, ZkVMType},
+        common::{ZkVMType, zkVMInstance},
         endpoints::{prove::ProveRequest, prove_program},
         program::{ProgramInput, get_sp1_compiled_program},
     };
@@ -111,8 +102,8 @@ mod tests {
 
         // Create a request
         let request = VerifyRequest {
-            program_id: program_id.clone(),
-            proof: base64::engine::general_purpose::STANDARD.encode(&result.proof),
+            program_id: result.program_id.clone(),
+            proof: result.proof.clone(),
         };
 
         // Call the handler
@@ -137,7 +128,7 @@ mod tests {
 
         let request = VerifyRequest {
             program_id: program_id.clone(),
-            proof: BASE64.encode("invalid_proof"),
+            proof: b"invalid_proof".to_vec(),
         };
 
         let result = verify_proof(State(state), Json(request)).await;
@@ -153,7 +144,7 @@ mod tests {
 
         let request = VerifyRequest {
             program_id: ProgramID("non_existent".to_string()),
-            proof: BASE64.encode("example_proof"),
+            proof: b"example_proof".to_vec(),
         };
 
         let result = verify_proof(State(state), Json(request)).await;
@@ -175,7 +166,7 @@ mod tests {
 
         let request = VerifyRequest {
             program_id: program_id.clone(),
-            proof: BASE64.encode("example_proof"),
+            proof: b"example_proof".to_vec(),
         };
 
         let result = verify_proof(State(state), Json(request)).await;
