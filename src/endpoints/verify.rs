@@ -140,10 +140,11 @@ mod tests {
         };
 
         let result = verify_proof(State(state), Json(request)).await;
-
-        assert!(result.is_err());
-        let (status, _) = result.unwrap_err();
-        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        // The endpoint returns a result if the verification fails.
+        // We need to check the proof response to know whether it failed
+        // verification and for what reason.
+        assert!(result.is_ok());
+        assert!(!result.unwrap().verified);
     }
 
     #[tokio::test]
