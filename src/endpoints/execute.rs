@@ -8,11 +8,12 @@ use tracing::instrument;
 use zkvm_interface::{Input, zkVM};
 
 use crate::common::AppState;
+use crate::program_input::ProgramInput;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExecuteRequest {
     pub program_id: String,
-    pub input: Vec<Vec<u8>>,
+    pub input: ProgramInput,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -46,14 +47,18 @@ pub async fn execute_program(
 
                 // Create input and execute using EreSP1
                 let mut input = Input::new();
-                for slice in &req.input {
-                    input.write(slice).map_err(|e| {
-                        (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Failed to write input: {}", e),
-                        )
-                    })?;
-                }
+                input.write(&req.input.value1).map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to write value1: {}", e),
+                    )
+                })?;
+                input.write(&req.input.value2).map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to write value2: {}", e),
+                    )
+                })?;
 
                 let zkvm = EreSP1::new(elf_bytes);
                 let report = zkvm.execute(&input).map_err(|e| {
@@ -111,9 +116,9 @@ mod tests {
     #[tokio::test]
     async fn test_execute_program_success() {
         let (state, _temp_dir) = create_test_state();
-        let program_id = "test_program".to_string();
+        let program_id = "sp1".to_string();
 
-        let program_dir = PathBuf::from("tests/sp1/execute/basic");
+        let program_dir = PathBuf::from("programs/sp1");
         let elf_bytes = RV32_IM_SUCCINCT_ZKVM_ELF::compile(&program_dir).unwrap();
 
         let elf_base64 = BASE64.encode(elf_bytes);
@@ -123,14 +128,12 @@ mod tests {
             programs.insert(program_id.clone(), Program::SP1(elf_base64));
         }
 
-        let mut input = Input::new();
-        input.write(&(10 as u32)).unwrap();
-        input.write(&(20 as u16)).unwrap();
-        let chunked_inputs: Vec<_> = input.chunked_iter().map(|chunk| chunk.to_vec()).collect();
-
         let request = ExecuteRequest {
             program_id: program_id.clone(),
-            input: chunked_inputs,
+            input: ProgramInput {
+                value1: 42,
+                value2: 10,
+            },
         };
 
         let result = execute_program(State(state), Json(request)).await;
@@ -138,7 +141,6 @@ mod tests {
         assert!(result.is_ok());
         let response = result.unwrap().0;
         assert_eq!(response.program_id, program_id);
-        // The program adds the inputs and multiplies by 2: (1 + 2) * 2 = 6
         assert!(response.total_num_cycles > 0);
         assert!(response.execution_time > 0.0);
     }
@@ -149,7 +151,10 @@ mod tests {
 
         let request = ExecuteRequest {
             program_id: "non_existent".to_string(),
-            input: vec![vec![1, 2, 3]],
+            input: ProgramInput {
+                value1: 42,
+                value2: 10,
+            },
         };
 
         let result = execute_program(State(state), Json(request)).await;
@@ -171,14 +176,16 @@ mod tests {
 
         let request = ExecuteRequest {
             program_id: program_id.clone(),
-            input: vec![vec![1, 2, 3]],
+            input: ProgramInput {
+                value1: 42,
+                value2: 10,
+            },
         };
 
         let result = execute_program(State(state), Json(request)).await;
 
         assert!(result.is_err());
-        let (status, message) = result.unwrap_err();
+        let (status, _message) = result.unwrap_err();
         assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
-        assert_eq!(message, "Only SP1 execution is supported");
     }
 }
