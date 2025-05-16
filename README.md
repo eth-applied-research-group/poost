@@ -12,7 +12,7 @@ A zero-knowledge proof service that provides an API for executing, proving, and 
 
 ## Prerequisites
 
-- Rust (latest stable version)
+- Rust
 - Specific zkVM toolchain
 
 ## Installation
