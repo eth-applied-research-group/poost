@@ -4,11 +4,8 @@ A zero-knowledge proof service that provides an API for executing, proving, and 
 
 ## Features
 
-- REST API for ZK program execution and verification
+- REST API for ZK program execution, proof generation and proof verification
 - Support for multiple ZK-VM backends (SP1, RISC0)
-- Program execution with input parameters
-- Proof generation and verification
-- System information monitoring
 
 ## Prerequisites
 
@@ -31,6 +28,8 @@ cargo build --release
 ```
 
 > Note: Some zkVMs must be built in release mode in order for proofs to be generated in a reasonable amount of time.
+
+> Note: Building the project does not install the zkVm specific compiler toolchains.
 
 ## Usage
 
