@@ -22,6 +22,9 @@ fn app(state: AppState) -> Router {
         .route("/info", get(get_server_info))
         .with_state(state)
         .layer(TraceLayer::new_for_http())
+        // 10MB limit to account for the proof size 
+        // and the possibly large input size
+        .layer(axum::extract::DefaultBodyLimit::max(10 * 1024 * 1024))
 }
 
 #[tokio::main]
@@ -40,7 +43,7 @@ async fn main() -> anyhow::Result<()> {
     let app = init_state().await;
 
     let addr: SocketAddr = "0.0.0.0:3000".parse()?;
-    println!("ZKVM Program Service listening on {addr}");
+    println!("Poost listening on {addr}");
 
     let listener = TcpListener::bind(addr).await?;
     axum::serve(listener, app)

@@ -14,7 +14,7 @@ anyhow = "1"
 uuid = { version = "1.7", features = ["v4", "serde"] }
 sysinfo = "0.30"
 hex = "0.4"
-tower-http = { version = "0.5", features = ["trace"] }
+tower-http = { version = "0.5", features = ["trace", "limit"] }
 wgpu = { version = "25" }
 once_cell = "1.21.3"
 base64 = "0.21"
