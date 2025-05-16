@@ -6,11 +6,12 @@ use tracing::instrument;
 use zkvm_interface::{Input, zkVM};
 
 use crate::common::AppState;
+use crate::program_input::ProgramInput;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProveRequest {
     pub program_id: String,
-    pub input: Vec<Vec<u8>>,
+    pub input: ProgramInput,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -28,7 +29,6 @@ pub async fn prove_program(
     let program_id = req.program_id.clone();
     if let Some(program) = state.programs.read().await.get(&program_id) {
         // Check if it's SP1 and use ere-sp1
-        // TODO: We can skip this redundant decoding
         match program {
             crate::common::Program::SP1(elf_base64) => {
                 // Decode the ELF file
@@ -41,14 +41,18 @@ pub async fn prove_program(
 
                 // Create input and generate proof using EreSP1
                 let mut input = Input::new();
-                for slice in &req.input {
-                    input.write(slice).map_err(|e| {
-                        (
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Failed to write input: {}", e),
-                        )
-                    })?;
-                }
+                input.write(&req.input.value1).map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to write value1: {}", e),
+                    )
+                })?;
+                input.write(&req.input.value2).map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to write value2: {}", e),
+                    )
+                })?;
 
                 let zkvm = EreSP1::new(elf_bytes);
                 let (proof, _report) = zkvm.prove(&input).map_err(|e| {
@@ -97,23 +101,39 @@ mod tests {
         (state, temp_dir)
     }
 
+    // Helper function to ensure test program is compiled
+    fn ensure_test_program_compiled() -> Vec<u8> {
+        let program_dir = PathBuf::from("programs/sp1");
+        let target_dir =
+            program_dir.join("target/elf-compilation/riscv32im-succinct-zkvm-elf/release");
+        let elf_path = target_dir.join("ere-test-sp1-guest");
+
+        if !elf_path.exists() {
+            println!("Compiling test program...");
+            RV32_IM_SUCCINCT_ZKVM_ELF::compile(&program_dir)
+                .expect("Failed to compile test program");
+        }
+
+        fs::read(&elf_path).expect("Failed to read compiled ELF")
+    }
+
     #[tokio::test]
     async fn test_prove_program_success() {
+        let elf_bytes = ensure_test_program_compiled();
         let (state, _temp_dir) = create_test_state();
-        let program_id = "test_program".to_string();
+        let program_id = "sp1".to_string();
         {
             let mut programs = state.programs.write().await;
-
-            let program_dir = PathBuf::from("tests/sp1/execute/basic");
-            let elf_bytes = RV32_IM_SUCCINCT_ZKVM_ELF::compile(&program_dir).unwrap();
-
-            let elf_base64 = BASE64.encode(elf_bytes);
+            let elf_base64 = BASE64.encode(&elf_bytes);
             programs.insert(program_id.clone(), Program::SP1(elf_base64));
         }
 
         let request = ProveRequest {
             program_id: program_id.clone(),
-            input: vec![vec![1, 2, 3], vec![4, 5, 6]],
+            input: ProgramInput {
+                value1: 42,
+                value2: 10,
+            },
         };
 
         let result = prove_program(State(state), Json(request)).await;
@@ -130,7 +150,10 @@ mod tests {
 
         let request = ProveRequest {
             program_id: "non_existent".to_string(),
-            input: vec![vec![1, 2, 3]],
+            input: ProgramInput {
+                value1: 42,
+                value2: 10,
+            },
         };
 
         let result = prove_program(State(state), Json(request)).await;
@@ -152,7 +175,10 @@ mod tests {
 
         let request = ProveRequest {
             program_id: program_id.clone(),
-            input: vec![vec![1, 2, 3]],
+            input: ProgramInput {
+                value1: 42,
+                value2: 10,
+            },
         };
 
         let result = prove_program(State(state), Json(request)).await;
@@ -165,85 +191,22 @@ mod tests {
     #[tokio::test]
     #[should_panic]
     async fn test_prove_program_fails_with_no_input() {
+        let elf_bytes = ensure_test_program_compiled();
         let (state, _temp_dir) = create_test_state();
         let program_id = "test_program".to_string();
-        let program_dir = PathBuf::from("tests/sp1/execute/basic");
-        let elf_bytes = RV32_IM_SUCCINCT_ZKVM_ELF::compile(&program_dir).unwrap();
-
-        let elf_base64 = BASE64.encode(&elf_bytes);
         {
             let mut programs = state.programs.write().await;
+            let elf_base64 = BASE64.encode(&elf_bytes);
             programs.insert(program_id.clone(), Program::SP1(elf_base64));
         }
 
         // Provide zero input
         let request = ProveRequest {
             program_id: program_id.clone(),
-            input: vec![],
-        };
-
-        // Call the handler directly
-        let _ = prove_program(State(state), Json(request)).await;
-    }
-
-    #[tokio::test]
-    #[should_panic]
-    async fn test_prove_program_fails_incorrect_input() {
-        let (state, _temp_dir) = create_test_state();
-        let program_id = "test_program".to_string();
-
-        let program_dir = PathBuf::from("tests/sp1/execute/basic");
-        let elf_bytes = RV32_IM_SUCCINCT_ZKVM_ELF::compile(&program_dir).unwrap();
-
-        let elf_base64 = BASE64.encode(&elf_bytes);
-        {
-            let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), Program::SP1(elf_base64));
-        }
-
-        // Note: Giving more input that required will not fail
-        let mut input = Input::new();
-        let n: bool = true;
-        input.write(&n).unwrap();
-        let input_chunked: Vec<_> = input.chunked_iter().map(|chunk| chunk.to_vec()).collect();
-
-        // Provide zero input
-        let request = ProveRequest {
-            program_id: program_id.clone(),
-            input: input_chunked,
-        };
-
-        // Call the handler directly
-        let _ = prove_program(State(state), Json(request)).await;
-    }
-
-    #[tokio::test]
-    async fn test_prove_program_sp1_passes_but_should_fail() {
-        let (state, _temp_dir) = create_test_state();
-        let program_id = "test_program".to_string();
-
-        let program_dir = PathBuf::from("tests/sp1/execute/basic");
-        let elf_bytes = RV32_IM_SUCCINCT_ZKVM_ELF::compile(&program_dir).unwrap();
-
-        let elf_base64 = BASE64.encode(&elf_bytes);
-        {
-            let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), Program::SP1(elf_base64));
-        }
-
-        // Note: The guest program expects two inputs, but not booleans
-        // so I expected this to fail.
-        let mut input = Input::new();
-        let n: bool = true;
-        let a: bool = true;
-        input.write(&n).unwrap();
-        input.write(&a).unwrap();
-        let input_chunked: Vec<_> = input.chunked_iter().map(|chunk| chunk.to_vec()).collect();
-
-        // Provide zero input
-        let request = ProveRequest {
-            program_id: program_id.clone(),
-            input: input_chunked,
+            input: ProgramInput {
+                value1: 0,
+                value2: 0,
+            },
         };
 
         // Call the handler directly
