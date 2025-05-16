@@ -8,8 +8,7 @@ use axum::{
     Router,
     routing::{get, post},
 };
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use common::{AppState, Program};
+use common::{AppState, Program, ProgramID, ZkVMType};
 use endpoints::{execute_program, get_server_info, prove_program, verify_proof};
 use ere_sp1::RV32_IM_SUCCINCT_ZKVM_ELF;
 use std::{fs, net::SocketAddr, path::PathBuf, sync::Arc};
@@ -70,13 +69,13 @@ async fn init_state() -> Router {
     println!("SP1 program compiled successfully");
 
     // Save the compiled program in the app state with a fixed program ID
-    let program_id = "sp1".to_string();
+    let program_id = ProgramID::from(ZkVMType::SP1);
     {
         let mut programs = state.programs.write().await;
-        programs.insert(program_id.clone(), Program::SP1(BASE64.encode(&program)));
+        programs.insert(program_id.clone(), Program::SP1(program));
     }
 
-    println!("SP1 program saved with ID: {}", program_id);
+    println!("SP1 program saved with ID: {:?}", program_id);
 
     // Build our application with a route
     let app = app(state);

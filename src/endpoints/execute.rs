@@ -7,18 +7,18 @@ use std::time::Instant;
 use tracing::instrument;
 use zkvm_interface::{Input, zkVM};
 
-use crate::common::AppState;
+use crate::common::{AppState, ProgramID};
 use crate::program_input::ProgramInput;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExecuteRequest {
-    pub program_id: String,
+    pub program_id: ProgramID,
     pub input: ProgramInput,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExecuteResponse {
-    pub program_id: String,
+    pub program_id: ProgramID,
     pub total_num_cycles: u64,
     pub region_cycles: IndexMap<String, u64>,
     pub execution_time: f64,
@@ -34,16 +34,8 @@ pub async fn execute_program(
     if let Some(program) = state.programs.read().await.get(&program_id) {
         // Check if it's SP1 and use ere-sp1
         match program {
-            crate::common::Program::SP1(elf_base64) => {
+            crate::common::Program::SP1(elf_bytes) => {
                 let start = Instant::now();
-
-                // Decode the ELF file
-                let elf_bytes = BASE64.decode(elf_base64).map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to decode ELF: {}", e),
-                    )
-                })?;
 
                 // Create input and execute using EreSP1
                 let mut input = Input::new();
@@ -60,7 +52,7 @@ pub async fn execute_program(
                     )
                 })?;
 
-                let zkvm = EreSP1::new(elf_bytes);
+                let zkvm = EreSP1::new(elf_bytes.clone());
                 let report = zkvm.execute(&input).map_err(|e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
@@ -89,7 +81,7 @@ pub async fn execute_program(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::Program;
+    use crate::common::{Program, ProgramID};
     use crate::test_utils::get_sp1_compiled_program;
 
     use std::collections::HashMap;
@@ -115,7 +107,7 @@ mod tests {
     #[tokio::test]
     async fn test_execute_program_success() {
         let (state, _temp_dir) = create_test_state();
-        let program_id = "sp1".to_string();
+        let program_id = ProgramID("sp1".to_string());
 
         let program = get_sp1_compiled_program();
 
@@ -146,7 +138,7 @@ mod tests {
         let (state, _temp_dir) = create_test_state();
 
         let request = ExecuteRequest {
-            program_id: "non_existent".to_string(),
+            program_id: ProgramID("non_existent".to_string()),
             input: ProgramInput {
                 value1: 42,
                 value2: 10,
@@ -164,7 +156,7 @@ mod tests {
     #[tokio::test]
     async fn test_execute_program_wrong_type() {
         let (state, _temp_dir) = create_test_state();
-        let program_id = "test_program".to_string();
+        let program_id = ProgramID("test_program".to_string());
         {
             let mut programs = state.programs.write().await;
             programs.insert(program_id.clone(), Program::Risc0("test".to_string()));

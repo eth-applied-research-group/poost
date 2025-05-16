@@ -1,22 +1,21 @@
 use axum::{Json, extract::State, http::StatusCode};
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use ere_sp1::EreSP1;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use zkvm_interface::{Input, zkVM};
 
-use crate::common::AppState;
+use crate::common::{AppState, ProgramID};
 use crate::program_input::ProgramInput;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProveRequest {
-    pub program_id: String,
+    pub program_id: ProgramID,
     pub input: ProgramInput,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProveResponse {
-    pub program_id: String,
+    pub program_id: ProgramID,
     pub proof: Vec<u8>,
 }
 
@@ -30,20 +29,10 @@ pub async fn prove_program(
     if let Some(program) = state.programs.read().await.get(&program_id) {
         // Check if it's SP1 and use ere-sp1
         match program {
-            crate::common::Program::SP1(elf_base64) => {
-                // Decode the ELF file
-                let elf_bytes = BASE64.decode(elf_base64).map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to decode ELF: {}", e),
-                    )
-                })?;
-
-                // Create input and generate proof using EreSP1
-
+            crate::common::Program::SP1(elf_bytes) => {
                 let input: Input = req.input.into();
 
-                let zkvm = EreSP1::new(elf_bytes);
+                let zkvm = EreSP1::new(elf_bytes.clone());
                 let (proof, _report) = zkvm.prove(&input).map_err(|e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
@@ -66,7 +55,7 @@ pub async fn prove_program(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::Program;
+    use crate::common::{Program, ZkVMType};
     use crate::test_utils::get_sp1_compiled_program;
     use std::collections::HashMap;
     use std::fs;
@@ -91,7 +80,7 @@ mod tests {
     async fn test_prove_program_success() {
         let program = get_sp1_compiled_program();
         let (state, _temp_dir) = create_test_state();
-        let program_id = "sp1".to_string();
+        let program_id = ProgramID::from(ZkVMType::SP1);
         {
             let mut programs = state.programs.write().await;
             programs.insert(program_id.clone(), program);
@@ -118,7 +107,7 @@ mod tests {
         let (state, _temp_dir) = create_test_state();
 
         let request = ProveRequest {
-            program_id: "non_existent".to_string(),
+            program_id: ProgramID("non_existent".to_string()),
             input: ProgramInput {
                 value1: 42,
                 value2: 10,
@@ -136,7 +125,7 @@ mod tests {
     #[tokio::test]
     async fn test_prove_program_wrong_type() {
         let (state, _temp_dir) = create_test_state();
-        let program_id = "test_program".to_string();
+        let program_id = ProgramID("test_program".to_string());
         {
             let mut programs = state.programs.write().await;
             programs.insert(program_id.clone(), Program::Risc0("test".to_string()));

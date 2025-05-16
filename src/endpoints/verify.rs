@@ -5,17 +5,17 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use zkvm_interface::zkVM;
 
-use crate::common::{AppState, Program};
+use crate::common::{AppState, Program, ProgramID};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VerifyRequest {
-    pub program_id: String,
+    pub program_id: ProgramID,
     pub proof: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VerifyResponse {
-    pub program_id: String,
+    pub program_id: ProgramID,
     pub verified: bool,
 }
 
@@ -27,15 +27,7 @@ pub async fn verify_proof(
 ) -> Result<Json<VerifyResponse>, (StatusCode, String)> {
     if let Some(program) = state.programs.read().await.get(&req.program_id) {
         match program {
-            Program::SP1(elf_base64) => {
-                // Decode the ELF file
-                let elf_bytes = BASE64.decode(elf_base64).map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to decode ELF: {}", e),
-                    )
-                })?;
-
+            Program::SP1(elf_bytes) => {
                 // Decode the proof
                 let proof_bytes = BASE64.decode(&req.proof).map_err(|e| {
                     (
@@ -45,7 +37,7 @@ pub async fn verify_proof(
                 })?;
 
                 // Create EreSP1 instance and verify
-                let zkvm = EreSP1::new(elf_bytes);
+                let zkvm = EreSP1::new(elf_bytes.clone());
                 zkvm.verify(&proof_bytes).map_err(|e| {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
@@ -72,7 +64,7 @@ pub async fn verify_proof(
 mod tests {
     use super::*;
     use crate::{
-        common::Program,
+        common::{Program, ZkVMType},
         endpoints::{prove::ProveRequest, prove_program},
         program_input::ProgramInput,
         test_utils::get_sp1_compiled_program,
@@ -98,7 +90,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_verify_proof_success() {
-        let program_id = "sp1".to_string();
+        let program_id = ProgramID::from(ZkVMType::SP1);
         let program = get_sp1_compiled_program();
 
         let state = AppState {
@@ -138,7 +130,7 @@ mod tests {
     #[tokio::test]
     async fn test_verify_proof_invalid_proof() {
         let (state, _temp_dir) = create_test_state();
-        let program_id = "sp1".to_string();
+        let program_id = ProgramID::from(ZkVMType::SP1);
 
         // Read and encode the fixed program's ELF
         let program = get_sp1_compiled_program();
@@ -164,7 +156,7 @@ mod tests {
         let (state, _temp_dir) = create_test_state();
 
         let request = VerifyRequest {
-            program_id: "non_existent".to_string(),
+            program_id: ProgramID("non_existent".to_string()),
             proof: BASE64.encode("example_proof"),
         };
 
@@ -179,7 +171,7 @@ mod tests {
     #[tokio::test]
     async fn test_verify_proof_wrong_type() {
         let (state, _temp_dir) = create_test_state();
-        let program_id = "test_program".to_string();
+        let program_id = ProgramID("test_program".to_string());
         {
             let mut programs = state.programs.write().await;
             programs.insert(program_id.clone(), Program::Risc0("test".to_string()));
