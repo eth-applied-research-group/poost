@@ -19,7 +19,7 @@ pub struct ExecuteResponse {
     pub program_id: ProgramID,
     pub total_num_cycles: u64,
     pub region_cycles: IndexMap<String, u64>,
-    pub execution_time: f64,
+    pub execution_time_milliseconds: u128,
 }
 
 #[axum::debug_handler]
@@ -29,50 +29,40 @@ pub async fn execute_program(
     Json(req): Json<ExecuteRequest>,
 ) -> Result<Json<ExecuteResponse>, (StatusCode, String)> {
     let program_id = req.program_id.clone();
-    if let Some(program) = state.programs.read().await.get(&program_id) {
-        // Check if it's SP1 and use ere-sp1
-        match program {
-            crate::common::zkVMInstance::SP1(zkvm) => {
-                let start = Instant::now();
+    let programs = state.programs.read().await;
 
-                // Create input and execute using EreSP1
-                let mut input = Input::new();
-                input.write(&req.input.value1).map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to write value1: {}", e),
-                    )
-                })?;
-                input.write(&req.input.value2).map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to write value2: {}", e),
-                    )
-                })?;
+    let program = programs
+        .get(&program_id)
+        .ok_or((StatusCode::NOT_FOUND, "Program not found".to_string()))?;
 
-                let report = zkvm.execute(&input).map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to execute program: {}", e),
-                    )
-                })?;
-                let execution_time = start.elapsed().as_secs_f64();
-
-                Ok(Json(ExecuteResponse {
-                    program_id,
-                    total_num_cycles: report.total_num_cycles,
-                    region_cycles: report.region_cycles,
-                    execution_time,
-                }))
-            }
-            _ => Err((
+    // Early return if not SP1
+    let zkvm = match program {
+        crate::common::zkVMInstance::SP1(zkvm) => zkvm,
+        _ => {
+            return Err((
                 StatusCode::NOT_IMPLEMENTED,
-                "Only SP1 execution is supported".to_string(),
-            )),
+                "Only SP1 execution is currently supported".to_string(),
+            ));
         }
-    } else {
-        Err((StatusCode::NOT_FOUND, "Program not found".to_string()))
-    }
+    };
+
+    let input: Input = req.input.into();
+
+    let start = Instant::now();
+    let report = zkvm.execute(&input).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to execute program: {}", e),
+        )
+    })?;
+    let execution_time_milliseconds = start.elapsed().as_millis();
+
+    Ok(Json(ExecuteResponse {
+        program_id,
+        total_num_cycles: report.total_num_cycles,
+        region_cycles: report.region_cycles,
+        execution_time_milliseconds,
+    }))
 }
 
 #[cfg(test)]
@@ -127,7 +117,7 @@ mod tests {
         let response = result.unwrap().0;
         assert_eq!(response.program_id, program_id);
         assert!(response.total_num_cycles > 0);
-        assert!(response.execution_time > 0.0);
+        assert!(response.execution_time_milliseconds > 0);
     }
 
     #[tokio::test]
