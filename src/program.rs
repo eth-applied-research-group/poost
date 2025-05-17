@@ -1,8 +1,8 @@
-use ere_sp1::{EreSP1, RV32_IM_SUCCINCT_ZKVM_ELF};
+use ere_sp1::EreSP1;
 use once_cell::sync::Lazy;
+use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use zkvm_interface::{Compiler, Input, zkVM};
+use zkvm_interface::{Input, zkVM};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ProgramInput {
@@ -20,11 +20,16 @@ impl From<ProgramInput> for Input {
     }
 }
 
+#[derive(RustEmbed)]
+#[folder = "programs/sp1/"]
+struct Sp1Assets;
+
 static SP1_COMPILED_PROGRAM: Lazy<EreSP1> = Lazy::new(|| {
-    let program_dir = PathBuf::from("programs/sp1");
-    let program =
-        RV32_IM_SUCCINCT_ZKVM_ELF::compile(&program_dir).expect("Failed to compile test program");
-    EreSP1::new(program)
+    // Load the ELF file bytes from embedded assets
+    let elf_bytes = Sp1Assets::get("sp1-program.elf")
+        .expect("Embedded SP1 ELF not found")
+        .data;
+    EreSP1::new(elf_bytes.into_owned())
 });
 
 pub fn get_sp1_compiled_program() -> &'static EreSP1 {

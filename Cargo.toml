@@ -22,8 +22,13 @@ indexmap = { version = "2.9.0", features = ["serde"] }
 
 zkvm-interface = { git = "https://github.com/eth-applied-research-group/ere", package = "zkvm-interface" }
 ere-sp1 = { git = "https://github.com/eth-applied-research-group/ere", package = "ere-sp1" }
+rust-embed = "8"
 
 [dev-dependencies]
 rand = "0.8"
 http-body-util = "0.1"
 tempfile = "*"
+
+[build-dependencies]
+ere_sp1 = { git = "https://github.com/eth-applied-research-group/ere", package = "ere-sp1" }
+zkvm_interface = { git = "https://github.com/eth-applied-research-group/ere", package = "zkvm-interface" }
