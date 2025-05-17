@@ -25,7 +25,7 @@ RUN cargo build --release
 
 # ---- Runtime Stage ----
 # Use a slim Debian image for a smaller final image
-FROM debian:slim-bookwork
+FROM debian:bookworm-slim
 
 # Set the working directory in the container
 WORKDIR /app
