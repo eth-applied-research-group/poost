@@ -14,7 +14,7 @@ COPY . .
 #  • curl → download the bootstrap script
 #  • add ~/.sp1/bin to PATH so subsequent RUN layers see the binaries
 RUN set -eux; \
-    apt-get update && apt-get install -y --no-install-recommends curl ca-certificates; \
+    apt-get update && apt-get install -y --no-install-recommends curl ca-certificates git; \
     curl -L https://sp1up.succinct.xyz | bash; \
     ~/.sp1/bin/sp1up; \
     echo 'export PATH="$HOME/.sp1/bin:$PATH"' >> /etc/profile.d/sp1.sh
