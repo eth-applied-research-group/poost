@@ -8,4 +8,6 @@ fn main() {
         .expect("Failed to compile SP1 program");
     // Write the ELF to a file so rust-embed can embed it
     fs::write(program_dir.join("sp1-program.elf"), program).expect("Failed to write ELF file");
+
+    println!("cargo:rerun-if-changed=programs");
 } 
