@@ -32,20 +32,9 @@ pub async fn prove_program(
         .get(&program_id)
         .ok_or((StatusCode::NOT_FOUND, "Program not found".to_string()))?;
 
-    // Early return if not SP1
-    let zkvm = match program {
-        crate::common::zkVMInstance::SP1(zkvm) => zkvm,
-        _ => {
-            return Err((
-                StatusCode::NOT_IMPLEMENTED,
-                "Only SP1 proving is currently supported".to_string(),
-            ));
-        }
-    };
-
     let input: Input = req.input.into();
 
-    let (proof, report) = zkvm.prove(&input).map_err(|e| {
+    let (proof, report) = program.vm.prove(&input).map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Failed to generate proof: {}", e),
@@ -63,7 +52,7 @@ pub async fn prove_program(
 mod tests {
     use super::*;
     use crate::common::{zkVMInstance, zkVMVendor};
-    use crate::program::get_sp1_compiled_program;
+    use crate::mock_zkvm::MockZkVM;
     use std::collections::HashMap;
     use std::fs;
     use std::sync::Arc;
@@ -85,21 +74,21 @@ mod tests {
 
     #[tokio::test]
     async fn test_prove_program_success() {
-        let sp1_zkvm = get_sp1_compiled_program();
+        let mock_zkvm = MockZkVM::default();
 
         let (state, _temp_dir) = create_test_state();
         let program_id = ProgramID::from(zkVMVendor::SP1);
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), zkVMInstance::SP1(sp1_zkvm));
+            programs.insert(
+                program_id.clone(),
+                zkVMInstance::new(zkVMVendor::SP1, Arc::new(mock_zkvm)),
+            );
         }
 
         let request = ProveRequest {
             program_id: program_id.clone(),
-            input: ProgramInput {
-                value1: 42,
-                value2: 10,
-            },
+            input: ProgramInput::test_input(),
         };
 
         let result = prove_program(State(state), Json(request)).await;
@@ -116,10 +105,7 @@ mod tests {
 
         let request = ProveRequest {
             program_id: ProgramID("non_existent".to_string()),
-            input: ProgramInput {
-                value1: 42,
-                value2: 10,
-            },
+            input: ProgramInput::test_input(),
         };
 
         let result = prove_program(State(state), Json(request)).await;
@@ -128,29 +114,5 @@ mod tests {
         let (status, message) = result.unwrap_err();
         assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(message, "Program not found");
-    }
-
-    #[tokio::test]
-    async fn test_prove_program_wrong_type() {
-        let (state, _temp_dir) = create_test_state();
-        let program_id = ProgramID("test_program".to_string());
-        {
-            let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), zkVMInstance::Risc0("test".to_string()));
-        }
-
-        let request = ProveRequest {
-            program_id: program_id.clone(),
-            input: ProgramInput {
-                value1: 42,
-                value2: 10,
-            },
-        };
-
-        let result = prove_program(State(state), Json(request)).await;
-
-        assert!(result.is_err());
-        let (status, _message) = result.unwrap_err();
-        assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
     }
 }

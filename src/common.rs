@@ -1,7 +1,7 @@
-use ere_sp1::EreSP1;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
+use zkvm_interface::zkVM;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Hash)]
 #[serde(transparent)]
@@ -47,14 +47,17 @@ impl std::fmt::Display for zkVMVendor {
     }
 }
 
-// TODO: Make Ere zkVMs implement Debug
-/// zkVMInstance holds a static references to a zkVM with
-/// a program already loaded into it.
 #[derive(Clone)]
 #[allow(non_camel_case_types)]
-pub enum zkVMInstance {
-    Risc0(String),
-    SP1(&'static EreSP1),
+pub struct zkVMInstance {
+    pub vendor: zkVMVendor,
+    pub vm: Arc<dyn zkVM + Send + Sync>,
+}
+
+impl zkVMInstance {
+    pub fn new(vendor: zkVMVendor, vm: Arc<dyn zkVM + Send + Sync>) -> Self {
+        Self { vendor, vm }
+    }
 }
 
 #[derive(Clone)]
