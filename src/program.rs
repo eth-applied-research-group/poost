@@ -24,11 +24,12 @@ impl From<ProgramInput> for Input {
 impl ProgramInput {
     /// Test input for the mock unit tests
     pub fn test_input() -> Self {
-        todo!()
-        // ProgramInput {
-        //     value1: 42,
-        //     value2: 25,
-        // }
+        ProgramInput {
+            input: ClientInput {
+                block: Default::default(),
+                witness: Default::default(),
+            },
+        }
     }
 }
 
