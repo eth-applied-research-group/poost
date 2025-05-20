@@ -20,6 +20,17 @@ impl From<ProgramInput> for Input {
     }
 }
 
+#[cfg(test)]
+impl ProgramInput {
+    /// Test input for the mock unit tests
+    pub fn test_input() -> Self {
+        ProgramInput {
+            value1: 42,
+            value2: 25,
+        }
+    }
+}
+
 #[derive(RustEmbed)]
 #[folder = "programs/sp1/"]
 struct Sp1Assets;

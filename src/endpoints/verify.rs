@@ -96,10 +96,7 @@ mod tests {
 
         let request = ProveRequest {
             program_id: program_id.clone(),
-            input: ProgramInput {
-                value1: 42,
-                value2: 10,
-            },
+            input: ProgramInput::test_input(),
         };
 
         let result = prove_program(State(state.clone()), Json(request))
