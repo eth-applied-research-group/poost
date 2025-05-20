@@ -2,7 +2,7 @@ use ere_sp1::EreSP1;
 use once_cell::sync::Lazy;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
-use zkvm_interface::{Input, zkVM};
+use zkvm_interface::{Input, ProverResourceType};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ProgramInput {
@@ -29,7 +29,7 @@ static SP1_COMPILED_PROGRAM: Lazy<EreSP1> = Lazy::new(|| {
     let elf_bytes = Sp1Assets::get("sp1-program.elf")
         .expect("Embedded SP1 ELF not found")
         .data;
-    EreSP1::new(elf_bytes.into_owned())
+    EreSP1::new(elf_bytes.into_owned(), ProverResourceType::Cpu)
 });
 
 pub fn get_sp1_compiled_program() -> &'static EreSP1 {
