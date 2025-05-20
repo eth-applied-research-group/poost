@@ -65,7 +65,7 @@ pub async fn execute_program(
 mod tests {
     use super::*;
     use crate::common::{ProgramID, zkVMInstance};
-    use crate::program::get_sp1_compiled_program;
+    use crate::mock_zkvm::MockZkVM;
 
     use std::collections::HashMap;
     use std::fs;
@@ -92,13 +92,13 @@ mod tests {
         let (state, _temp_dir) = create_test_state();
         let program_id = ProgramID("sp1".to_string());
 
-        let zkvm = get_sp1_compiled_program();
+        let mock_zkvm = MockZkVM::default();
 
         {
             let mut programs = state.programs.write().await;
             programs.insert(
                 program_id.clone(),
-                zkVMInstance::new(crate::common::zkVMVendor::SP1, Arc::new(zkvm)),
+                zkVMInstance::new(crate::common::zkVMVendor::SP1, Arc::new(mock_zkvm)),
             );
         }
 
@@ -143,12 +143,12 @@ mod tests {
     async fn test_execute_program_wrong_type() {
         let (state, _temp_dir) = create_test_state();
         let program_id = ProgramID("test_program".to_string());
-        let zkvm = get_sp1_compiled_program();
+        let mock_zkvm = MockZkVM::default();
         {
             let mut programs = state.programs.write().await;
             programs.insert(
                 program_id.clone(),
-                zkVMInstance::new(crate::common::zkVMVendor::Risc0, Arc::new(zkvm)),
+                zkVMInstance::new(crate::common::zkVMVendor::Risc0, Arc::new(mock_zkvm)),
             );
         }
 

@@ -4,6 +4,16 @@ use tracing::instrument;
 use zkvm_interface::zkVM;
 
 use crate::common::{AppState, ProgramID};
+use crate::{
+    common::{zkVMInstance, zkVMVendor},
+    endpoints::{prove::ProveRequest, prove_program},
+    program::ProgramInput,
+};
+
+use std::collections::HashMap;
+use std::fs;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VerifyRequest {
@@ -55,11 +65,7 @@ pub async fn verify_proof(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        common::{zkVMInstance, zkVMVendor},
-        endpoints::{prove::ProveRequest, prove_program},
-        program::{ProgramInput, get_sp1_compiled_program},
-    };
+    use crate::mock_zkvm::MockZkVM;
     use std::collections::HashMap;
     use std::fs;
     use std::sync::Arc;
@@ -82,7 +88,7 @@ mod tests {
     #[tokio::test]
     async fn test_verify_proof_success() {
         let program_id = ProgramID::from(zkVMVendor::SP1);
-        let sp1_zkvm = get_sp1_compiled_program();
+        let mock_zkvm = MockZkVM::default();
 
         let state = AppState {
             programs: Arc::new(RwLock::new(HashMap::new())),
@@ -91,7 +97,7 @@ mod tests {
             let mut programs = state.programs.write().await;
             programs.insert(
                 program_id.clone(),
-                zkVMInstance::new(zkVMVendor::SP1, Arc::new(sp1_zkvm)),
+                zkVMInstance::new(zkVMVendor::SP1, Arc::new(mock_zkvm)),
             );
         }
 
@@ -126,13 +132,12 @@ mod tests {
         let (state, _temp_dir) = create_test_state();
         let program_id = ProgramID::from(zkVMVendor::SP1);
 
-        // Read and encode the fixed program's ELF
-        let sp1_zkvm = get_sp1_compiled_program();
+        let mock_zkvm = MockZkVM::default();
         {
             let mut programs = state.programs.write().await;
             programs.insert(
                 program_id.clone(),
-                zkVMInstance::new(zkVMVendor::SP1, Arc::new(sp1_zkvm)),
+                zkVMInstance::new(zkVMVendor::SP1, Arc::new(mock_zkvm)),
             );
         }
 
@@ -172,10 +177,10 @@ mod tests {
         let program_id = ProgramID("test_program".to_string());
         {
             let mut programs = state.programs.write().await;
-            let sp1_zkvm = get_sp1_compiled_program();
+            let mock_zkvm = MockZkVM::default();
             programs.insert(
                 program_id.clone(),
-                zkVMInstance::new(zkVMVendor::Risc0, Arc::new(sp1_zkvm)),
+                zkVMInstance::new(zkVMVendor::Risc0, Arc::new(mock_zkvm)),
             );
         }
 

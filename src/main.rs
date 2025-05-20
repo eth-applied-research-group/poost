@@ -2,6 +2,9 @@ mod common;
 mod endpoints;
 mod program;
 
+#[cfg(test)]
+mod mock_zkvm;
+
 use axum::{
     Router,
     routing::{get, post},

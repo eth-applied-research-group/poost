@@ -59,7 +59,7 @@ pub async fn prove_program(
 mod tests {
     use super::*;
     use crate::common::{zkVMInstance, zkVMVendor};
-    use crate::program::get_sp1_compiled_program;
+    use crate::mock_zkvm::MockZkVM;
     use std::collections::HashMap;
     use std::fs;
     use std::sync::Arc;
@@ -81,7 +81,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_prove_program_success() {
-        let sp1_zkvm = get_sp1_compiled_program();
+        let mock_zkvm = MockZkVM::default();
 
         let (state, _temp_dir) = create_test_state();
         let program_id = ProgramID::from(zkVMVendor::SP1);
@@ -89,7 +89,7 @@ mod tests {
             let mut programs = state.programs.write().await;
             programs.insert(
                 program_id.clone(),
-                zkVMInstance::new(zkVMVendor::SP1, Arc::new(sp1_zkvm)),
+                zkVMInstance::new(zkVMVendor::SP1, Arc::new(mock_zkvm)),
             );
         }
 
@@ -133,12 +133,12 @@ mod tests {
     async fn test_prove_program_wrong_type() {
         let (state, _temp_dir) = create_test_state();
         let program_id = ProgramID("test_program".to_string());
-        let sp1_zkvm = get_sp1_compiled_program();
+        let mock_zkvm = MockZkVM::default();
         {
             let mut programs = state.programs.write().await;
             programs.insert(
                 program_id.clone(),
-                zkVMInstance::new(zkVMVendor::Risc0, Arc::new(sp1_zkvm)),
+                zkVMInstance::new(zkVMVendor::Risc0, Arc::new(mock_zkvm)),
             );
         }
 
