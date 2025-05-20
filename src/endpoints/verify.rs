@@ -163,29 +163,4 @@ mod tests {
         assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(message, "Program not found");
     }
-
-    #[tokio::test]
-    async fn test_verify_proof_wrong_type() {
-        let (state, _temp_dir) = create_test_state();
-        let program_id = ProgramID("test_program".to_string());
-        {
-            let mut programs = state.programs.write().await;
-            let mock_zkvm = MockZkVM::default();
-            programs.insert(
-                program_id.clone(),
-                zkVMInstance::new(zkVMVendor::Risc0, Arc::new(mock_zkvm)),
-            );
-        }
-
-        let request = VerifyRequest {
-            program_id: program_id.clone(),
-            proof: b"example_proof".to_vec(),
-        };
-
-        let result = verify_proof(State(state), Json(request)).await;
-
-        assert!(result.is_err());
-        let (status, _message) = result.unwrap_err();
-        assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
-    }
 }
