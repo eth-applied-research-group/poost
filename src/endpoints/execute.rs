@@ -35,13 +35,6 @@ pub async fn execute_program(
         .get(&program_id)
         .ok_or((StatusCode::NOT_FOUND, "Program not found".to_string()))?;
 
-    if program.vendor != crate::common::zkVMVendor::SP1 {
-        return Err((
-            StatusCode::NOT_IMPLEMENTED,
-            "Only SP1 execution is currently supported".to_string(),
-        ));
-    }
-
     let input: Input = req.input.into();
 
     let start = Instant::now();

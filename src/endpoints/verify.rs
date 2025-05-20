@@ -42,13 +42,6 @@ pub async fn verify_proof(
         .get(&req.program_id)
         .ok_or((StatusCode::NOT_FOUND, "Program not found".to_string()))?;
 
-    if program.vendor != crate::common::zkVMVendor::SP1 {
-        return Err((
-            StatusCode::NOT_IMPLEMENTED,
-            "Only SP1 verification is currently supported".to_string(),
-        ));
-    }
-
     // Verify the proof
     let (verified, failure_reason) = match program.vm.verify(&req.proof) {
         Ok(_) => (true, String::default()),

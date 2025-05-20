@@ -32,13 +32,6 @@ pub async fn prove_program(
         .get(&program_id)
         .ok_or((StatusCode::NOT_FOUND, "Program not found".to_string()))?;
 
-    if program.vendor != crate::common::zkVMVendor::SP1 {
-        return Err((
-            StatusCode::NOT_IMPLEMENTED,
-            "Only SP1 proving is currently supported".to_string(),
-        ));
-    }
-
     let input: Input = req.input.into();
 
     let (proof, report) = program.vm.prove(&input).map_err(|e| {
