@@ -16,6 +16,6 @@ pub fn main() {
     let chain_spec = &*reth_chainspec::HOODI;
 
     println!("cycle-tracker-report-start: validation");
-    stateless_validation(input.block.into_block(), input.witness, chain_spec.clone()).unwrap();
+    stateless_validation(input.block, input.witness, chain_spec.clone()).unwrap();
     println!("cycle-tracker-report-end: validation");
 }

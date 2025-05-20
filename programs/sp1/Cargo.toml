@@ -8,22 +8,22 @@ edition = "2021"
 [dependencies]
 sp1-zkvm = { git = "https://github.com/succinctlabs/sp1.git" }
 
-revm = { version = "23.0.1", default-features = false, features = [
+revm = { version = "23.1.0", default-features = false, features = [
     "kzg-rs",
     "bn",
 ] }
 
-reth-ethereum-primitives = { git = "https://github.com/kevaundray/reth", rev = "d026ceedf0fcc1b68e1a4133e605235b380ea34e", features = [
+reth-ethereum-primitives = { git = "https://github.com/kevaundray/reth", rev = "2da36a83250abbe9ebad72a6146b236a8f8b3bb6", features = [
     "serde",
     "serde-bincode-compat",
 ] }
-reth-primitives-traits = { git = "https://github.com/kevaundray/reth", rev = "d026ceedf0fcc1b68e1a4133e605235b380ea34e", features = [
+reth-primitives-traits = { git = "https://github.com/kevaundray/reth", rev = "2da36a83250abbe9ebad72a6146b236a8f8b3bb6", features = [
     "serde",
     "serde-bincode-compat",
 ] }
-reth-stateless = { git = "https://github.com/kevaundray/reth", rev = "d026ceedf0fcc1b68e1a4133e605235b380ea34e" }
-reth-chainspec = { git = "https://github.com/kevaundray/reth", rev = "d026ceedf0fcc1b68e1a4133e605235b380ea34e" }
-alloy-primitives = { version = "1.0.0", default-features = false, features = [
+reth-stateless = { git = "https://github.com/kevaundray/reth", rev = "2da36a83250abbe9ebad72a6146b236a8f8b3bb6" }
+reth-chainspec = { git = "https://github.com/kevaundray/reth", rev = "2da36a83250abbe9ebad72a6146b236a8f8b3bb6" }
+alloy-primitives = { version = "1.1.0", default-features = false, features = [
     "map-foldhash",
     "serde",
     "sha3-keccak",
