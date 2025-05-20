@@ -3,7 +3,17 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use zkvm_interface::zkVM;
 
-use crate::common::{AppState, ProgramID, zkVMInstance};
+use crate::common::{AppState, ProgramID};
+use crate::{
+    common::{zkVMInstance, zkVMVendor},
+    endpoints::{prove::ProveRequest, prove_program},
+    program::ProgramInput,
+};
+
+use std::collections::HashMap;
+use std::fs;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VerifyRequest {
@@ -32,19 +42,8 @@ pub async fn verify_proof(
         .get(&req.program_id)
         .ok_or((StatusCode::NOT_FOUND, "Program not found".to_string()))?;
 
-    // Early return if not SP1
-    let zkvm = match program {
-        zkVMInstance::SP1(zkvm) => zkvm,
-        _ => {
-            return Err((
-                StatusCode::NOT_IMPLEMENTED,
-                "Only SP1 verification is currently supported".to_string(),
-            ));
-        }
-    };
-
     // Verify the proof
-    let (verified, failure_reason) = match zkvm.verify(&req.proof) {
+    let (verified, failure_reason) = match program.vm.verify(&req.proof) {
         Ok(_) => (true, String::default()),
         Err(err) => (false, format!("{}", err)),
     };
@@ -59,11 +58,7 @@ pub async fn verify_proof(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        common::{zkVMInstance, zkVMVendor},
-        endpoints::{prove::ProveRequest, prove_program},
-        program::{ProgramInput, get_sp1_compiled_program},
-    };
+    use crate::mock_zkvm::MockZkVM;
     use std::collections::HashMap;
     use std::fs;
     use std::sync::Arc;
@@ -86,22 +81,22 @@ mod tests {
     #[tokio::test]
     async fn test_verify_proof_success() {
         let program_id = ProgramID::from(zkVMVendor::SP1);
-        let sp1_zkvm = get_sp1_compiled_program();
+        let mock_zkvm = MockZkVM::default();
 
         let state = AppState {
             programs: Arc::new(RwLock::new(HashMap::new())),
         };
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), zkVMInstance::SP1(sp1_zkvm));
+            programs.insert(
+                program_id.clone(),
+                zkVMInstance::new(zkVMVendor::SP1, Arc::new(mock_zkvm)),
+            );
         }
 
         let request = ProveRequest {
             program_id: program_id.clone(),
-            input: ProgramInput {
-                value1: 42,
-                value2: 10,
-            },
+            input: ProgramInput::test_input(),
         };
 
         let result = prove_program(State(state.clone()), Json(request))
@@ -127,11 +122,13 @@ mod tests {
         let (state, _temp_dir) = create_test_state();
         let program_id = ProgramID::from(zkVMVendor::SP1);
 
-        // Read and encode the fixed program's ELF
-        let sp1_zkvm = get_sp1_compiled_program();
+        let mock_zkvm = MockZkVM::default();
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), zkVMInstance::SP1(sp1_zkvm));
+            programs.insert(
+                program_id.clone(),
+                zkVMInstance::new(zkVMVendor::SP1, Arc::new(mock_zkvm)),
+            );
         }
 
         let request = VerifyRequest {
@@ -162,26 +159,5 @@ mod tests {
         let (status, message) = result.unwrap_err();
         assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(message, "Program not found");
-    }
-
-    #[tokio::test]
-    async fn test_verify_proof_wrong_type() {
-        let (state, _temp_dir) = create_test_state();
-        let program_id = ProgramID("test_program".to_string());
-        {
-            let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), zkVMInstance::Risc0("test".to_string()));
-        }
-
-        let request = VerifyRequest {
-            program_id: program_id.clone(),
-            proof: b"example_proof".to_vec(),
-        };
-
-        let result = verify_proof(State(state), Json(request)).await;
-
-        assert!(result.is_err());
-        let (status, _message) = result.unwrap_err();
-        assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
     }
 }

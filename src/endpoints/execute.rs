@@ -35,21 +35,10 @@ pub async fn execute_program(
         .get(&program_id)
         .ok_or((StatusCode::NOT_FOUND, "Program not found".to_string()))?;
 
-    // Early return if not SP1
-    let zkvm = match program {
-        crate::common::zkVMInstance::SP1(zkvm) => zkvm,
-        _ => {
-            return Err((
-                StatusCode::NOT_IMPLEMENTED,
-                "Only SP1 execution is currently supported".to_string(),
-            ));
-        }
-    };
-
     let input: Input = req.input.into();
 
     let start = Instant::now();
-    let report = zkvm.execute(&input).map_err(|e| {
+    let report = program.vm.execute(&input).map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Failed to execute program: {}", e),
@@ -69,7 +58,7 @@ pub async fn execute_program(
 mod tests {
     use super::*;
     use crate::common::{ProgramID, zkVMInstance};
-    use crate::program::get_sp1_compiled_program;
+    use crate::mock_zkvm::MockZkVM;
 
     use std::collections::HashMap;
     use std::fs;
@@ -96,19 +85,19 @@ mod tests {
         let (state, _temp_dir) = create_test_state();
         let program_id = ProgramID("sp1".to_string());
 
-        let zkvm = get_sp1_compiled_program();
+        let mock_zkvm = MockZkVM::default();
 
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), zkVMInstance::SP1(zkvm));
+            programs.insert(
+                program_id.clone(),
+                zkVMInstance::new(crate::common::zkVMVendor::SP1, Arc::new(mock_zkvm)),
+            );
         }
 
         let request = ExecuteRequest {
             program_id: program_id.clone(),
-            input: ProgramInput {
-                value1: 42,
-                value2: 10,
-            },
+            input: ProgramInput::test_input(),
         };
 
         let result = execute_program(State(state), Json(request)).await;
@@ -126,10 +115,7 @@ mod tests {
 
         let request = ExecuteRequest {
             program_id: ProgramID("non_existent".to_string()),
-            input: ProgramInput {
-                value1: 42,
-                value2: 10,
-            },
+            input: ProgramInput::test_input(),
         };
 
         let result = execute_program(State(state), Json(request)).await;
@@ -138,29 +124,5 @@ mod tests {
         let (status, message) = result.unwrap_err();
         assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(message, "Program not found");
-    }
-
-    #[tokio::test]
-    async fn test_execute_program_wrong_type() {
-        let (state, _temp_dir) = create_test_state();
-        let program_id = ProgramID("test_program".to_string());
-        {
-            let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), zkVMInstance::Risc0("test".to_string()));
-        }
-
-        let request = ExecuteRequest {
-            program_id: program_id.clone(),
-            input: ProgramInput {
-                value1: 42,
-                value2: 10,
-            },
-        };
-
-        let result = execute_program(State(state), Json(request)).await;
-
-        assert!(result.is_err());
-        let (status, _message) = result.unwrap_err();
-        assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
     }
 }

@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
 use zkvm_interface::Compiler;
 
 fn main() {
@@ -10,4 +10,4 @@ fn main() {
     fs::write(program_dir.join("sp1-program.elf"), program).expect("Failed to write ELF file");
 
     println!("cargo:rerun-if-changed=programs");
-} 
+}
