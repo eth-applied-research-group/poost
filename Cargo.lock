@@ -1747,9 +1747,10 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 [[package]]
 name = "ere-sp1"
 version = "0.1.0"
-source = "git+https://github.com/eth-applied-research-group/ere#86d476b9ddda2d82337f13cfc1b8b21471585397"
+source = "git+https://github.com/eth-applied-research-group/ere#87f6e976dc2b0868307b5280a73d9ae33d4b05bb"
 dependencies = [
  "bincode",
+ "indexmap 2.9.0",
  "sp1-sdk",
  "tempfile",
  "thiserror 2.0.12",
@@ -6888,9 +6889,10 @@ dependencies = [
 [[package]]
 name = "zkvm-interface"
 version = "0.1.0"
-source = "git+https://github.com/eth-applied-research-group/ere#86d476b9ddda2d82337f13cfc1b8b21471585397"
+source = "git+https://github.com/eth-applied-research-group/ere#87f6e976dc2b0868307b5280a73d9ae33d4b05bb"
 dependencies = [
  "anyhow",
+ "auto_impl",
  "bincode",
  "indexmap 2.9.0",
  "serde",
