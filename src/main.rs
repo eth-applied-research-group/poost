@@ -70,7 +70,10 @@ async fn init_state() -> Router {
     let program_id = ProgramID::from(zkVMVendor::SP1);
     {
         let mut programs = state.programs.write().await;
-        programs.insert(program_id.clone(), zkVMInstance::SP1(sp1_zkvm));
+        programs.insert(
+            program_id.clone(),
+            zkVMInstance::new(zkVMVendor::SP1, Arc::new(sp1_zkvm)),
+        );
     }
 
     println!("SP1 program saved with ID: {:?}", program_id);

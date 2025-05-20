@@ -35,21 +35,17 @@ pub async fn execute_program(
         .get(&program_id)
         .ok_or((StatusCode::NOT_FOUND, "Program not found".to_string()))?;
 
-    // Early return if not SP1
-    let zkvm = match program {
-        crate::common::zkVMInstance::SP1(zkvm) => zkvm,
-        _ => {
-            return Err((
-                StatusCode::NOT_IMPLEMENTED,
-                "Only SP1 execution is currently supported".to_string(),
-            ));
-        }
-    };
+    if program.vendor != crate::common::zkVMVendor::SP1 {
+        return Err((
+            StatusCode::NOT_IMPLEMENTED,
+            "Only SP1 execution is currently supported".to_string(),
+        ));
+    }
 
     let input: Input = req.input.into();
 
     let start = Instant::now();
-    let report = zkvm.execute(&input).map_err(|e| {
+    let report = program.vm.execute(&input).map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Failed to execute program: {}", e),
@@ -100,7 +96,10 @@ mod tests {
 
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), zkVMInstance::SP1(zkvm));
+            programs.insert(
+                program_id.clone(),
+                zkVMInstance::new(crate::common::zkVMVendor::SP1, Arc::new(zkvm)),
+            );
         }
 
         let request = ExecuteRequest {
@@ -144,9 +143,13 @@ mod tests {
     async fn test_execute_program_wrong_type() {
         let (state, _temp_dir) = create_test_state();
         let program_id = ProgramID("test_program".to_string());
+        let zkvm = get_sp1_compiled_program();
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), zkVMInstance::Risc0("test".to_string()));
+            programs.insert(
+                program_id.clone(),
+                zkVMInstance::new(crate::common::zkVMVendor::Risc0, Arc::new(zkvm)),
+            );
         }
 
         let request = ExecuteRequest {

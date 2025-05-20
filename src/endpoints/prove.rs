@@ -32,20 +32,16 @@ pub async fn prove_program(
         .get(&program_id)
         .ok_or((StatusCode::NOT_FOUND, "Program not found".to_string()))?;
 
-    // Early return if not SP1
-    let zkvm = match program {
-        crate::common::zkVMInstance::SP1(zkvm) => zkvm,
-        _ => {
-            return Err((
-                StatusCode::NOT_IMPLEMENTED,
-                "Only SP1 proving is currently supported".to_string(),
-            ));
-        }
-    };
+    if program.vendor != crate::common::zkVMVendor::SP1 {
+        return Err((
+            StatusCode::NOT_IMPLEMENTED,
+            "Only SP1 proving is currently supported".to_string(),
+        ));
+    }
 
     let input: Input = req.input.into();
 
-    let (proof, report) = zkvm.prove(&input).map_err(|e| {
+    let (proof, report) = program.vm.prove(&input).map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Failed to generate proof: {}", e),
@@ -91,7 +87,10 @@ mod tests {
         let program_id = ProgramID::from(zkVMVendor::SP1);
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), zkVMInstance::SP1(sp1_zkvm));
+            programs.insert(
+                program_id.clone(),
+                zkVMInstance::new(zkVMVendor::SP1, Arc::new(sp1_zkvm)),
+            );
         }
 
         let request = ProveRequest {
@@ -134,9 +133,13 @@ mod tests {
     async fn test_prove_program_wrong_type() {
         let (state, _temp_dir) = create_test_state();
         let program_id = ProgramID("test_program".to_string());
+        let sp1_zkvm = get_sp1_compiled_program();
         {
             let mut programs = state.programs.write().await;
-            programs.insert(program_id.clone(), zkVMInstance::Risc0("test".to_string()));
+            programs.insert(
+                program_id.clone(),
+                zkVMInstance::new(zkVMVendor::Risc0, Arc::new(sp1_zkvm)),
+            );
         }
 
         let request = ProveRequest {
