@@ -1,7 +1,7 @@
 use axum::{Json, extract::State, http::StatusCode};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tracing::instrument;
 use zkvm_interface::{Input, zkVM};
 
@@ -19,7 +19,7 @@ pub struct ExecuteResponse {
     pub program_id: ProgramID,
     pub total_num_cycles: u64,
     pub region_cycles: IndexMap<String, u64>,
-    pub execution_time_milliseconds: u128,
+    pub execution_time_duration: Duration,
 }
 
 #[axum::debug_handler]
@@ -44,13 +44,13 @@ pub async fn execute_program(
             format!("Failed to execute program: {}", e),
         )
     })?;
-    let execution_time_milliseconds = start.elapsed().as_millis();
+    let execution_time_duration = start.elapsed();
 
     Ok(Json(ExecuteResponse {
         program_id,
         total_num_cycles: report.total_num_cycles,
         region_cycles: report.region_cycles,
-        execution_time_milliseconds,
+        execution_time_duration,
     }))
 }
 
@@ -106,7 +106,7 @@ mod tests {
         let response = result.unwrap().0;
         assert_eq!(response.program_id, program_id);
         assert!(response.total_num_cycles > 0);
-        assert!(response.execution_time_milliseconds > 0);
+        assert!(response.execution_time_duration.as_millis() > 0);
     }
 
     #[tokio::test]
