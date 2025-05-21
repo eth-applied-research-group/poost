@@ -5,7 +5,7 @@ use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
 use zkvm_interface::{Input, ProverResourceType};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(transparent)]
 pub struct ProgramInput {
     pub input: ClientInput,
