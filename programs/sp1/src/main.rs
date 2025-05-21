@@ -13,7 +13,7 @@ pub fn main() {
     let input = sp1_zkvm::io::read::<ClientInput>();
     println!("cycle-tracker-report-end: read_input");
 
-    let chain_spec = &*reth_chainspec::HOODI;
+    let chain_spec = &*reth_chainspec::MAINNET;
 
     println!("cycle-tracker-report-start: validation");
     stateless_validation(input.block, input.witness, chain_spec.clone()).unwrap();
