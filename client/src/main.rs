@@ -126,8 +126,13 @@ fn main() -> anyhow::Result<()> {
     let program_input = fetch_client_input(reth_url, "latest")?;
 
     // Call execute endpoint
+    println!("started execution");
     let program_id = PROGRAM_ID;
     execute(server, program_id, &program_input)?;
+
+    // Call prove endpoint
+    println!("started proving");
+    let proof = prove(server, program_id, &program_input)?;
 
     Ok(())
 }
@@ -211,7 +216,7 @@ fn prove(server: &str, program_id: &str, input: &ProgramInput) -> anyhow::Result
     let url = format!("{}/prove", server.trim_end_matches('/'));
     let client = reqwest::blocking::Client::builder()
         // Increase timeout since prove could take a long time
-        .timeout(Duration::from_secs(300))
+        .timeout(Duration::from_secs(3600))
         .build()
         .unwrap();
     let resp = client.post(url).json(&req_body).send()?;
