@@ -1,21 +1,21 @@
 use ere_sp1::EreSP1;
 use once_cell::sync::Lazy;
+use reth_stateless::ClientInput;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
 use zkvm_interface::{Input, ProverResourceType};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(transparent)]
 pub struct ProgramInput {
-    pub value1: u32,
-    pub value2: u16,
+    pub input: ClientInput,
 }
 
 // TODO: change to try_from -- need to modify ere to not return bincode::Error
 impl From<ProgramInput> for Input {
     fn from(value: ProgramInput) -> Self {
         let mut input = Input::new();
-        input.write(&value.value1).unwrap();
-        input.write(&value.value2).unwrap();
+        input.write(&value.input).unwrap();
         input
     }
 }
@@ -25,8 +25,10 @@ impl ProgramInput {
     /// Test input for the mock unit tests
     pub fn test_input() -> Self {
         ProgramInput {
-            value1: 42,
-            value2: 25,
+            input: ClientInput {
+                block: Default::default(),
+                witness: Default::default(),
+            },
         }
     }
 }

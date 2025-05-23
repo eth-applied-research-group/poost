@@ -1,14 +1,21 @@
+//! SP1 guest program
+
 #![no_main]
 
+extern crate alloc;
+
+use reth_stateless::{ClientInput, validation::stateless_validation};
+
 sp1_zkvm::entrypoint!(main);
+/// Entry point.
+pub fn main() {
+    println!("cycle-tracker-report-start: read_input");
+    let input = sp1_zkvm::io::read::<ClientInput>();
+    println!("cycle-tracker-report-end: read_input");
 
-fn main() {
-    // Read the two inputs
-    let value1: u32 = sp1_zkvm::io::read();
-    let value2: u16 = sp1_zkvm::io::read();
+    let chain_spec = &*reth_chainspec::MAINNET;
 
-    let result = (value1 as u64) * (value2 as u64) + (value1 as u64);
-
-    // Write the result
-    sp1_zkvm::io::commit(&result);
-} 
+    println!("cycle-tracker-report-start: validation");
+    stateless_validation(input.block, input.witness, chain_spec.clone()).unwrap();
+    println!("cycle-tracker-report-end: validation");
+}

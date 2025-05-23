@@ -25,9 +25,9 @@ fn app(state: AppState) -> Router {
         .route("/info", get(get_server_info))
         .with_state(state)
         .layer(TraceLayer::new_for_http())
-        // 10MB limit to account for the proof size
+        // 400MB limit to account for the proof size
         // and the possibly large input size
-        .layer(axum::extract::DefaultBodyLimit::max(10 * 1024 * 1024))
+        .layer(axum::extract::DefaultBodyLimit::max(400 * 1024 * 1024))
 }
 
 #[tokio::main]
